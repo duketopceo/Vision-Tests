@@ -19,6 +19,7 @@ import { readIndex, scanRepo, writeIndex } from './index/scan.js';
 import { buildJournalEntry } from './journal/build.js';
 import { newRunId, writeJournal } from './journal/store.js';
 import { createLogger, resolveLogLevel } from './log.js';
+import { liveLog } from './live.js';
 import { writeJunitXml } from './report/junit.js';
 import { buildRunReport, writeRunReport } from './report/run.js';
 import { flowPath, loadFlow } from './cache/store.js';
@@ -364,7 +365,7 @@ async function cmdRun(args, ctx, deps) {
         else
             ctx.err(`warning: ignoring invalid ARGUS_BUDGET_USD="${envBudget}"`);
     }
-    const logger = createLogger(resolveLogLevel(ctx.env, config.logLevel), ctx);
+    const logger = createLogger(resolveLogLevel(ctx.env, config.logLevel), ctx, (l, m) => liveLog(ctx.cwd, 'run', l, m));
     const runErrors = [];
     const runId = newRunId();
     const startedAt = new Date();
