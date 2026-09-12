@@ -1,2 +1,2 @@
-export declare function liveLogPath(cwd: string): string;
-export declare function liveLog(cwd: string, source: string, level: string, msg: string): void;
+export declare function liveLogPath(dir: string): string;
+export declare function liveLog(dir: string, source: string, level: string, msg: string): void;

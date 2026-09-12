@@ -16,6 +16,7 @@ let win
 let evalChild
 let logChild
 let liveOffset = -1 // -1 = uninitialized; first tail seeds recent history
+let liveIno = -1 // rotation replaces the file (new inode) — re-seed on change
 let liveBuf = ''
 const LIVE_SEED = 32 * 1024
 
@@ -23,9 +24,15 @@ const LIVE_SEED = 32 * 1024
 // lines; we emit new entries to the renderer as 'live-log'.
 async function tailLive() {
   try {
-    const size = statSync(LIVE_LOG).size
+    const st = statSync(LIVE_LOG)
+    if (st.ino !== liveIno) {
+      liveIno = st.ino
+      liveOffset = -1
+      liveBuf = ''
+    }
+    const size = st.size
     if (liveOffset === -1) liveOffset = Math.max(0, size - LIVE_SEED)
-    if (size < liveOffset) liveOffset = 0 // truncated/rotated
+    if (size < liveOffset) liveOffset = 0 // truncated
     if (size === liveOffset) return
     const fh = await open(LIVE_LOG)
     const { buffer } = await fh.read(Buffer.alloc(size - liveOffset), 0, size - liveOffset, liveOffset)
@@ -48,16 +55,31 @@ ipcMain.handle('run-logs', (_e, runId) => {
   if (logChild) return { ok: false, msg: 'already tailing a run' }
   // `gh run view --log` dumps completed logs; `--log-failed` for failures.
   logChild = spawn('gh', ['run', 'view', String(runId), '--log'], { cwd: ROOT })
+  // Buffer per stream — a chunk can split a log line in two.
+  const pending = { out: '', err: '' }
   const send = (stream, d) => {
-    for (const l of String(d).split('\n').filter(Boolean)) {
+    const lines = (pending[stream] + String(d)).split('\n')
+    pending[stream] = lines.pop()
+    for (const l of lines.filter(Boolean)) {
       win?.webContents.send('run-log', { stream, line: l })
     }
   }
   logChild.stdout.on('data', (d) => send('out', d))
   logChild.stderr.on('data', (d) => send('err', d))
+  let errored = false
+  logChild.on('error', (err) => {
+    errored = true
+    logChild = undefined
+    win?.webContents.send('run-log', { stream: 'done', line: `gh failed to start: ${err.message}` })
+  })
   logChild.on('close', (code) => {
     logChild = undefined
-    win?.webContents.send('run-log', { stream: 'done', line: `logs exited ${code}` })
+    for (const s of ['out', 'err']) {
+      if (pending[s]) win?.webContents.send('run-log', { stream: s, line: pending[s] })
+    }
+    if (!errored) {
+      win?.webContents.send('run-log', { stream: 'done', line: `logs exited ${code}` })
+    }
   })
   return { ok: true }
 })

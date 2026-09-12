@@ -430,8 +430,9 @@ async function cmdRun(args: string[], ctx: Ctx, deps: CliDeps): Promise<number> 
     else ctx.err(`warning: ignoring invalid ARGUS_BUDGET_USD="${envBudget}"`)
   }
 
+  const liveDir = resolve(ctx.cwd, config.cacheDir ?? '.argus-reviewer-cache')
   const logger = createLogger(resolveLogLevel(ctx.env, config.logLevel), ctx, (l, m) =>
-    liveLog(ctx.cwd, 'run', l, m),
+    liveLog(liveDir, 'run', l, m),
   )
   const runErrors: ErrorRecord[] = []
   const runId = newRunId()

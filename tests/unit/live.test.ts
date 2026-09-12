@@ -6,11 +6,11 @@ import { join } from 'node:path'
 import { liveLog, liveLogPath } from '../../src/live.js'
 
 describe('liveLog', () => {
-  it('appends NDJSON lines under <cwd>/.argus-reviewer-cache', async () => {
-    const cwd = await mkdtemp(join(tmpdir(), 'argus-live-'))
-    liveLog(cwd, 'run', 'debug', 'hello')
-    liveLog(cwd, 'run', 'warn', 'second')
-    const lines = (await readFile(liveLogPath(cwd), 'utf8')).trim().split('\n')
+  it('appends NDJSON lines under the given cache dir', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'argus-live-'))
+    liveLog(dir, 'run', 'debug', 'hello')
+    liveLog(dir, 'run', 'warn', 'second')
+    const lines = (await readFile(liveLogPath(dir), 'utf8')).trim().split('\n')
     expect(lines).toHaveLength(2)
     const a = JSON.parse(lines[0])
     expect(a.source).toBe('run')
@@ -21,9 +21,9 @@ describe('liveLog', () => {
   })
 
   it('caps message length', async () => {
-    const cwd = await mkdtemp(join(tmpdir(), 'argus-live-'))
-    liveLog(cwd, 'run', 'info', 'x'.repeat(2000))
-    const line = (await readFile(liveLogPath(cwd), 'utf8')).trim()
+    const dir = await mkdtemp(join(tmpdir(), 'argus-live-'))
+    liveLog(dir, 'run', 'info', 'x'.repeat(2000))
+    const line = (await readFile(liveLogPath(dir), 'utf8')).trim()
     expect(JSON.parse(line).msg.length).toBe(500)
   })
 
@@ -31,15 +31,15 @@ describe('liveLog', () => {
     expect(() => liveLog('/proc/1/nonexistent', 'run', 'info', 'x')).not.toThrow()
   })
 
-  it('rotates when file exceeds 1MB', async () => {
-    const cwd = await mkdtemp(join(tmpdir(), 'argus-live-'))
+  it('rotates when file exceeds 1MB and every retained line parses', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'argus-live-'))
     // Messages cap at 500 chars, so each line is ~560 bytes — need ~1900
     // writes to actually cross the 1MB rotation threshold.
-    for (let i = 0; i < 2000; i++) liveLog(cwd, 'run', 'info', `entry-${i} ` + 'y'.repeat(600))
-    const { size } = await stat(liveLogPath(cwd))
+    for (let i = 0; i < 2000; i++) liveLog(dir, 'run', 'info', `entry-${i} ` + 'y'.repeat(600))
+    const { size } = await stat(liveLogPath(dir))
     expect(size).toBeLessThan(400 * 1024)
-    // tail still parses as NDJSON
-    const lines = (await readFile(liveLogPath(cwd), 'utf8')).trim().split('\n')
+    const lines = (await readFile(liveLogPath(dir), 'utf8')).trim().split('\n')
+    for (const l of lines) JSON.parse(l) // rotation must not keep a partial first line
     expect(JSON.parse(lines[lines.length - 1]).msg).toContain('entry-1999')
   })
 })
