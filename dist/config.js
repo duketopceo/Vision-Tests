@@ -68,8 +68,8 @@ export async function loadConfig(cwd) {
                     const js = ts.transpileModule(source, {
                         compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
                     }).outputText;
-                    const dir = await mkdtemp(join(tmpdir(), 'vision-e2e-config-'));
-                    const out = join(dir, 'vision-e2e.config.mjs');
+                    const dir = await mkdtemp(join(tmpdir(), 'argus-config-'));
+                    const out = join(dir, 'config.mjs');
                     await writeFile(out, js, 'utf8');
                     mod = (await import(pathToFileURL(out).href));
                 }

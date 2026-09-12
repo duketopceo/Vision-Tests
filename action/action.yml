@@ -11,7 +11,7 @@ inputs:
     required: false
   config:
     description: Path to the argus-reviewer config file
-    default: vision-e2e.config.ts
+    default: argus-reviewer.config.ts
     required: false
   working-directory:
     description: Working directory for the consumer's project
@@ -61,8 +61,8 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: |
-        if [ "${{ inputs.config }}" != "vision-e2e.config.ts" ]; then
-          cp "${{ inputs.config }}" vision-e2e.config.ts
+        if [ "${{ inputs.config }}" != "argus-reviewer.config.ts" ]; then
+          cp "${{ inputs.config }}" argus-reviewer.config.ts
         fi
 
     - name: Build repo index

@@ -54,7 +54,7 @@ function capture(): Captured {
 
 async function writeConfig(cwd: string, testsDir: string, cacheDir: string, reportDir: string) {
   await writeFile(
-    join(cwd, 'vision-e2e.config.json'),
+    join(cwd, 'argus-reviewer.config.json'),
     JSON.stringify({
       testsDir,
       cacheDir,

@@ -76,7 +76,7 @@ describe('Engine record/replay', () => {
   })
 
   it('recorded flow replays with zero model calls when fingerprints resolve', async () => {
-    const cacheDir = await mkdtemp(join(tmpdir(), 'vision-e2e-ae1-'))
+    const cacheDir = await mkdtemp(join(tmpdir(), 'argus-ae1-'))
     const actions = new Actions(driver)
     const client = new FakeClient([
       { content: JSON.stringify({ action: 'click', x: 200, y: 130, reasoning: 'click the button' }) },
@@ -99,7 +99,7 @@ describe('Engine record/replay', () => {
   })
 
   it('element moved triggers exactly one heal call and updates the cache', async () => {
-    const cacheDir = await mkdtemp(join(tmpdir(), 'vision-e2e-ae2-'))
+    const cacheDir = await mkdtemp(join(tmpdir(), 'argus-ae2-'))
     const actions = new Actions(driver)
     const recordClient = new FakeClient([
       { content: JSON.stringify({ action: 'click', x: 200, y: 130, reasoning: 'click' }) },
@@ -146,7 +146,7 @@ describe('Engine record/replay', () => {
   })
 
   it('heal failure marks the step and run as failed with reasoning captured', async () => {
-    const cacheDir = await mkdtemp(join(tmpdir(), 'vision-e2e-fail-'))
+    const cacheDir = await mkdtemp(join(tmpdir(), 'argus-fail-'))
     const actions = new Actions(driver)
     const recordClient = new FakeClient([
       { content: JSON.stringify({ action: 'click', x: 200, y: 130, reasoning: 'click' }) },

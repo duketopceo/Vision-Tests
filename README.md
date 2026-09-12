@@ -13,7 +13,7 @@ npx argus-reviewer record "log in and open settings" --url https://localhost:300
 npx argus-reviewer run             # replays + asserts, zero-cost on cache hit
 ```
 
-Configuration lives in `vision-e2e.config.ts` (filename kept for compatibility) — see `src/config.ts` for the full shape: `model`, `grounding_model`, `escalation_model`, `provider` routing rules, `budgetUsd`, `target`, `pageSetup`, `secrets`.
+Configuration lives in `argus-reviewer.config.ts` (a legacy `vision-e2e.config.*` is still accepted) — see `src/config.ts` for the full shape: `model`, `grounding_model`, `escalation_model`, `provider` routing rules, `budgetUsd`, `target`, `pageSetup`, `secrets`.
 
 ### OpenRouter cost attribution
 
@@ -45,7 +45,7 @@ argus-reviewer/
 ├── src/
 │   ├── api.ts               # Test-facing `test`/`td` API + generated test file renderer
 │   ├── cli.ts               # `record`, `run`, and `cache` commands
-│   ├── config.ts            # `vision-e2e.config.ts` loader + provider slug defaults
+│   ├── config.ts            # `argus-reviewer.config.*` loader (legacy `vision-e2e.*` accepted)
 │   ├── driver/
 │   │   ├── browser.ts       # Playwright Chromium launch + observation capture
 │   │   └── target.ts        # Optional local dev-server target process

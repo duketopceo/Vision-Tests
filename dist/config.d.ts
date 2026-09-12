@@ -33,7 +33,7 @@ export interface Config {
     budgetUsd: number | undefined;
     target: Target | undefined;
     cacheDir: string | undefined;
-    /** Directory scanned by `vision-e2e run` for *.test.* files. */
+    /** Directory scanned by `argus-reviewer run` for *.test.* files. */
     testsDir: string | undefined;
     /** Directory for JUnit XML + JSON run report output. */
     reportDir: string | undefined;

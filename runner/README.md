@@ -3,7 +3,7 @@
 `register-runner.sh` registers a repo-scoped GitHub Actions runner on a Linux node as a **user-level systemd service** — no root required.
 
 ```bash
-./register-runner.sh duketopceo/Pace-Server cluster2-vision-e2e
+./register-runner.sh duketopceo/Pace-Server cluster2-argus
 ./register-runner.sh owner/other-repo cluster2-other-repo
 ```
 
@@ -12,7 +12,7 @@ Each repo gets its own runner dir (`~/actions-runner-<name>`) and unit (`actions
 ## Topology
 
 - **Primary node: cluster2** (Ubuntu 24.04, x86_64, Docker 29, ~14 GiB free). cluster1 hosts the stateful AppFlowy stack; cluster3 is RAM-constrained.
-- Labels: `self-hosted, linux, x64, vision-e2e`. Target jobs with `runs-on: [self-hosted, linux, x64, vision-e2e]`.
+- Labels: `self-hosted, linux, x64, argus-reviewer`. Target jobs with `runs-on: [self-hosted, linux, x64, argus-reviewer]`.
 
 ## Cost model
 

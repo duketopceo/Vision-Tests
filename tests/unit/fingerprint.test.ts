@@ -65,7 +65,7 @@ describe('Fingerprint', () => {
 
 describe('Cache store round-trip', () => {
   it('writes and reads a flow with one step per entry and stable key ordering', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'vision-e2e-fp-'))
+    const dir = await mkdtemp(join(tmpdir(), 'argus-fp-'))
     const record: FingerprintRecord = {
       instruction: 'Click the button',
       action: { action: 'click', x: 200, y: 130 },

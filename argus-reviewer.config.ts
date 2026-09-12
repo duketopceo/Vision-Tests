@@ -9,6 +9,6 @@ export default {
     readyTimeoutMs: 0,
   },
   testsDir: 'e2e',
-  cacheDir: '.vision-e2e-cache',
-  reportDir: 'vision-e2e-report',
+  cacheDir: '.argus-reviewer-cache',
+  reportDir: 'argus-reviewer-report',
 }
