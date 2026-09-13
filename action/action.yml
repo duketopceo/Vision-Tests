@@ -34,6 +34,10 @@ inputs:
   cache-dependency-path:
     description: npm lockfile path for setup-node cache (defaults to <working-directory>/package-lock.json)
     required: false
+  report-dir:
+    description: Report output dir, passed to both run and code-review so the post step can find run.json/code-review.json regardless of config reportDir
+    default: argus-reviewer-report
+    required: false
 outputs:
   conclusion:
     description: 'Run conclusion: success, failure, or neutral'
@@ -87,7 +91,7 @@ runs:
           "run_id":"${{ github.run_id }}",
           "run_attempt":"${{ github.run_attempt }}",
           "workflow":"${{ github.workflow }}"}
-      run: ${{ inputs.cli }} code-review
+      run: ${{ inputs.cli }} code-review --report-dir "${{ inputs.report-dir }}"
 
     - name: Run argus-reviewer
       id: run
@@ -106,7 +110,7 @@ runs:
           "run_id":"${{ github.run_id }}",
           "run_attempt":"${{ github.run_attempt }}",
           "workflow":"${{ github.workflow }}"}
-      run: ${{ inputs.cli }} run
+      run: ${{ inputs.cli }} run --report-dir "${{ inputs.report-dir }}"
 
     - name: Post or update sticky PR comment
       id: post
@@ -114,6 +118,7 @@ runs:
       env:
         OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
         VISION_E2E_WORKING_DIR: ${{ inputs.working-directory }}
+        ARGUS_REPORT_DIR: ${{ inputs.report-dir }}
       with:
         github-token: ${{ github.token }}
         script: |
