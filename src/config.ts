@@ -90,6 +90,12 @@ export interface Config {
   indexPath: string | undefined
   /** Base ref for diff invalidation (e.g. 'origin/main'); unset = working tree. */
   diffBase: string | undefined
+  /**
+   * Max actions `argus-reviewer record` will take before giving up on `done`.
+   * Real multi-action flows need headroom — defaults to 40; `record
+   * --max-steps <n>` overrides.
+   */
+  recordStepCap: number | undefined
 }
 
 export type ConfigInput = Partial<Omit<Config, 'provider'>> & { provider?: Partial<ProviderRules> }
@@ -118,6 +124,7 @@ const defaults: Config = {
   sourceGlobs: undefined,
   indexPath: undefined,
   diffBase: undefined,
+  recordStepCap: 40,
 }
 
 export function defineConfig(input: ConfigInput): ConfigInput {
