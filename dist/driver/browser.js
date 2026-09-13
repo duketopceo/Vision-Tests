@@ -38,7 +38,7 @@ export class BrowserDriver {
             throw new Error(`unknown browser: ${browserName}`);
         }
         const ownsVideoDir = options.videoDir === undefined;
-        const videoDir = options.videoDir ?? (await mkdtemp(join(tmpdir(), 'vision-e2e-video-')));
+        const videoDir = options.videoDir ?? (await mkdtemp(join(tmpdir(), 'argus-video-')));
         await mkdir(videoDir, { recursive: true });
         const cleanupVideoDir = () => ownsVideoDir ? rm(videoDir, { recursive: true, force: true }).catch(() => undefined) : Promise.resolve();
         let browser;
@@ -119,7 +119,7 @@ export class BrowserDriver {
         await this.page.evaluate(() => {
             const doc = globalThis.document;
             const overlay = doc.createElement('div');
-            overlay.id = '__vision_e2e_grid';
+            overlay.id = '__argus_grid';
             overlay.setAttribute('aria-hidden', 'true');
             overlay.style.cssText =
                 'position:fixed;inset:0;z-index:2147483647;pointer-events:none;' +
@@ -129,7 +129,7 @@ export class BrowserDriver {
                     'background-size:100px 100px;';
             doc.body.appendChild(overlay);
             const labels = doc.createElement('div');
-            labels.id = '__vision_e2e_grid_labels';
+            labels.id = '__argus_grid_labels';
             labels.setAttribute('aria-hidden', 'true');
             labels.style.cssText =
                 'position:fixed;inset:0;z-index:2147483647;pointer-events:none;' +
@@ -150,7 +150,7 @@ export class BrowserDriver {
         await this.page
             .evaluate(() => {
             const doc = globalThis.document;
-            for (const id of ['__vision_e2e_grid', '__vision_e2e_grid_labels']) {
+            for (const id of ['__argus_grid', '__argus_grid_labels']) {
                 doc.getElementById(id)?.remove();
             }
         })
