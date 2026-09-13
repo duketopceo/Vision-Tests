@@ -18,10 +18,14 @@ export interface Logger {
 export function createLogger(
   level: LogLevel,
   sink: { err: (line: string) => void },
+  live?: (level: LogLevel, msg: string) => void,
 ): Logger {
   const emit = (l: LogLevel, msg: string) => {
     if (ORDER[l] >= ORDER[level]) sink.err(`[${l}] ${msg}`)
+    live?.(l, msg)
   }
+  // `live` receives every level regardless of `level` — the local dashboard
+  // wants full detail even when the console stays quiet.
   return {
     level,
     debug: (m) => emit('debug', m),

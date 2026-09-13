@@ -28,6 +28,7 @@ import { buildJournalEntry } from './journal/build.js'
 import { ErrorRecord } from './journal/schema.js'
 import { newRunId, writeJournal } from './journal/store.js'
 import { createLogger, resolveLogLevel } from './log.js'
+import { liveLog } from './live.js'
 import { JunitCase, writeJunitXml } from './report/junit.js'
 import { buildRunReport, TestReport, writeRunReport } from './report/run.js'
 import { flowPath, loadFlow } from './cache/store.js'
@@ -429,7 +430,10 @@ async function cmdRun(args: string[], ctx: Ctx, deps: CliDeps): Promise<number> 
     else ctx.err(`warning: ignoring invalid ARGUS_BUDGET_USD="${envBudget}"`)
   }
 
-  const logger = createLogger(resolveLogLevel(ctx.env, config.logLevel), ctx)
+  const liveDir = resolve(ctx.cwd, config.cacheDir ?? '.argus-reviewer-cache')
+  const logger = createLogger(resolveLogLevel(ctx.env, config.logLevel), ctx, (l, m) =>
+    liveLog(liveDir, 'run', l, m),
+  )
   const runErrors: ErrorRecord[] = []
   const runId = newRunId()
   const startedAt = new Date()

@@ -48,6 +48,14 @@ function renderRuns(s) {
     const age = Math.max(0, Math.round((Date.now() - new Date(r.createdAt).getTime()) / 60000))
     row.append(ic, el('span','t',esc(r.displayTitle)),
       el('span','m', `${esc(r.workflowName)} · ${esc(r.headBranch)} · ${age}m`))
+    if (r.databaseId) {
+      const btn = el('button', 'logs-btn', 'logs')
+      btn.onclick = async () => {
+        const res = await window.argus.runLogs(r.databaseId)
+        if (!res.ok) liveAppend({ level: 'warn', source: 'gh', msg: esc(res.msg) })
+      }
+      row.append(btn)
+    }
     d.append(row)
   }
   if (!s.runs.length) d.append(el('div','dim','no runs'))
@@ -119,6 +127,26 @@ window.argus.onEvalLog(({ stream, line }) => {
   $('evallog').append(el('div', stream === 'err' ? 'bad' : stream === 'done' ? 'warn' : '', esc(line)))
   $('evallog').scrollTop = $('evallog').scrollHeight
   if (stream === 'done') refresh()
+})
+
+const LVL_CLS = { debug: 'dim', info: '', warn: 'warn', error: 'bad' }
+function liveAppend(m) {
+  const d = $('livelog')
+  const t = new Date(m.ts ?? Date.now()).toLocaleTimeString()
+  const row = el('div', 'row')
+  row.append(
+    el('span', 'm', t),
+    el('span', 'lv', esc(m.source)),
+    el('span', LVL_CLS[m.level] ?? '', `[${esc(m.level)}]`),
+    el('span', 't', esc(m.msg ?? m.line)),
+  )
+  d.append(row)
+  while (d.childElementCount > 400) d.firstChild.remove()
+  d.scrollTop = d.scrollHeight
+}
+window.argus.onLiveLog(liveAppend)
+window.argus.onRunLog(({ stream, line }) => {
+  liveAppend({ ts: Date.now(), source: 'gh', level: stream === 'err' ? 'error' : stream === 'done' ? 'warn' : 'info', msg: line })
 })
 
 refresh()

@@ -13,5 +13,5 @@ export interface Logger {
 }
 export declare function createLogger(level: LogLevel, sink: {
     err: (line: string) => void;
-}): Logger;
+}, live?: (level: LogLevel, msg: string) => void): Logger;
 export declare function resolveLogLevel(env: Record<string, string | undefined>, configured?: string): LogLevel;

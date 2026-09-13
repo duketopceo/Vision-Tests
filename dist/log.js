@@ -1,9 +1,12 @@
 const ORDER = { debug: 0, info: 1, warn: 2, error: 3 };
-export function createLogger(level, sink) {
+export function createLogger(level, sink, live) {
     const emit = (l, msg) => {
         if (ORDER[l] >= ORDER[level])
             sink.err(`[${l}] ${msg}`);
+        live?.(l, msg);
     };
+    // `live` receives every level regardless of `level` — the local dashboard
+    // wants full detail even when the console stays quiet.
     return {
         level,
         debug: (m) => emit('debug', m),

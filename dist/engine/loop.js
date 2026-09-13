@@ -196,6 +196,11 @@ export class Engine {
                 };
             }
         }
+        // A diff-invalidated (stale) entry is a fresh ground, not a heal — heal
+        // implies the fingerprint *checked out as wrong*, stale means we never
+        // verified it. Keeping the kind split honest keeps the heal-rate signal
+        // in the journal meaningful and avoids spending escalation calls on
+        // entries we already know are stale.
         const isStale = cached !== undefined && cached.stale !== undefined;
         const useHeal = cached !== undefined && !isStale;
         const primary = await this._locateWithModel(instruction, observation, useHeal);
@@ -230,12 +235,18 @@ export class Engine {
                 // "(x,y)" coordinates — ask in their native format.
                 `Click on the UI element matching this description: ${instruction.replace(/^locate:\s*/i, '')}.`
             : instruction;
-        const escalation = specialist || useHeal ? [this._opts.config.escalation_model] : undefined;
+        // The escalation retry (modelOverride) wins; otherwise a specialist's
+        // grounding_model is the primary. Don't also pass esc as the provider
+        // fallback list when esc IS the primary — that just duplicates it.
+        const primaryModel = modelOverride ?? this._opts.config.grounding_model;
+        const escalation = (specialist || useHeal) && primaryModel !== this._opts.config.escalation_model
+            ? [this._opts.config.escalation_model]
+            : undefined;
         let response;
         try {
             response = await this._callModel(useHeal ? 'heal' : 'ground', buildActionMessages(prompt, observation), {
                 ...(escalation !== undefined ? { escalationModels: escalation } : {}),
-                ...(modelOverride !== undefined ? { model: modelOverride } : {}),
+                ...(primaryModel !== undefined ? { model: primaryModel } : {}),
                 dropSchema: specialist,
             });
         }
@@ -309,7 +320,7 @@ export class Engine {
             try {
                 retry = await this._callModel(useHeal ? 'heal' : 'ground', buildActionMessages(feedback, observation), {
                     ...(escalation !== undefined ? { escalationModels: escalation } : {}),
-                    ...(modelOverride !== undefined ? { model: modelOverride } : {}),
+                    ...(primaryModel !== undefined ? { model: primaryModel } : {}),
                     dropSchema: specialist,
                 });
             }

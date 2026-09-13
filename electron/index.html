@@ -42,7 +42,9 @@
     white-space: pre-wrap; word-break: break-word; font-size: 12px;
     color: var(--fg); max-height: 340px; overflow-y: auto;
   }
-  #evallog { max-height: 180px; overflow-y: auto; font-size: 12px; }
+  #evallog, #livelog { max-height: 220px; overflow-y: auto; font-size: 12px; }
+  #livelog .lv { color: var(--purple); }
+  .logs-btn { padding: 0 8px; font-size: 11px; }
   button {
     background: var(--panel); border: 1px solid var(--border); color: var(--fg);
     border-radius: 6px; padding: 4px 12px; font: inherit; cursor: pointer;
@@ -67,6 +69,7 @@
   <section class="card"><h2>Journal History</h2><div id="jhist"></div><canvas id="spark" width="520" height="60"></canvas></section>
   <section class="card"><h2>Latest Journal <span id="jfile" class="dim"></span></h2><div id="journal"></div></section>
   <section class="card wide" id="evalcard" hidden><h2>Eval Log</h2><div id="evallog"></div></section>
+  <section class="card wide"><h2>Live Log <span class="dim">— argus debug output, tailed live</span></h2><div id="livelog"></div></section>
 </div>
 <script src="renderer.js"></script>
 </body>
