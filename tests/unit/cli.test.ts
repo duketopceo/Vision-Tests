@@ -52,7 +52,7 @@ function capture(): Captured {
   return { lines, fn: (line) => lines.push(line) }
 }
 
-describe('vision-e2e CLI', () => {
+describe('argus-reviewer CLI', () => {
   it('record --help and run --help exit 0', async () => {
     const out = capture()
     expect(await main(['record', '--help'], { out: out.fn })).toBe(0)
@@ -63,14 +63,14 @@ describe('vision-e2e CLI', () => {
   })
 
   it('runs a td-API test file end-to-end, warns on unknown provider slugs, writes JUnit + report', async () => {
-    const cwd = await mkdtemp(join(tmpdir(), 'vision-e2e-cli-'))
+    const cwd = await mkdtemp(join(tmpdir(), 'argus-cli-'))
     const testsDir = join(cwd, 'tests')
     const cacheDir = join(cwd, 'cache')
     const reportDir = join(cwd, 'report')
     await mkdir(testsDir, { recursive: true })
 
     await writeFile(
-      join(cwd, 'vision-e2e.config.json'),
+      join(cwd, 'argus-reviewer.config.json'),
       JSON.stringify({
         testsDir,
         cacheDir,
@@ -137,11 +137,11 @@ describe('vision-e2e CLI', () => {
   }, 60_000)
 
   it('marks the run failed when an assertion fails', async () => {
-    const cwd = await mkdtemp(join(tmpdir(), 'vision-e2e-cli-fail-'))
+    const cwd = await mkdtemp(join(tmpdir(), 'argus-cli-fail-'))
     const testsDir = join(cwd, 'tests')
     await mkdir(testsDir, { recursive: true })
     await writeFile(
-      join(cwd, 'vision-e2e.config.json'),
+      join(cwd, 'argus-reviewer.config.json'),
       JSON.stringify({ testsDir, reportDir: join(cwd, 'report'), budgetUsd: 1 }),
     )
     await writeFile(
@@ -167,7 +167,7 @@ describe('vision-e2e CLI', () => {
   }, 60_000)
 
   it('invokes config pageSetup with the page before navigation', async () => {
-    const cwd = await mkdtemp(join(tmpdir(), 'vision-e2e-setup-'))
+    const cwd = await mkdtemp(join(tmpdir(), 'argus-setup-'))
     const testsDir = join(cwd, 'tests')
     await mkdir(testsDir, { recursive: true })
 
@@ -183,7 +183,7 @@ describe('vision-e2e CLI', () => {
 `,
     )
     await writeFile(
-      join(cwd, 'vision-e2e.config.json'),
+      join(cwd, 'argus-reviewer.config.json'),
       JSON.stringify({
         testsDir,
         reportDir: join(cwd, 'report'),
@@ -208,11 +208,11 @@ describe('vision-e2e CLI', () => {
   }, 60_000)
 
   it('cache list and prune operate on the cache dir', async () => {
-    const cwd = await mkdtemp(join(tmpdir(), 'vision-e2e-cache-'))
+    const cwd = await mkdtemp(join(tmpdir(), 'argus-cache-'))
     const cacheDir = join(cwd, 'cache')
     await mkdir(cacheDir, { recursive: true })
     await writeFile(join(cacheDir, 'flow-a.json'), JSON.stringify({ steps: [] }))
-    await writeFile(join(cwd, 'vision-e2e.config.json'), JSON.stringify({ cacheDir }))
+    await writeFile(join(cwd, 'argus-reviewer.config.json'), JSON.stringify({ cacheDir }))
     const out = capture()
     expect(await main(['cache', 'list'], { cwd, out: out.fn })).toBe(0)
     expect(out.lines.join('\n')).toContain('flow-a: 0 steps')
@@ -222,7 +222,7 @@ describe('vision-e2e CLI', () => {
   })
 
   it('init scaffolds config, smoke test, and workflow; skips existing files', async () => {
-    const cwd = await mkdtemp(join(tmpdir(), 'vision-e2e-init-'))
+    const cwd = await mkdtemp(join(tmpdir(), 'argus-init-'))
     const out = capture()
     expect(await main(['init'], { cwd, out: out.fn })).toBe(0)
     const { existsSync } = await import('node:fs')
@@ -239,14 +239,21 @@ describe('vision-e2e CLI', () => {
 describe('loadConfig', () => {
   it('loads a TypeScript config via transpile fallback', async () => {
     const { loadConfig } = await import('../../src/config.js')
-    const cwd = await mkdtemp(join(tmpdir(), 'vision-e2e-cfg-'))
+    const cwd = await mkdtemp(join(tmpdir(), 'argus-cfg-'))
     await writeFile(
-      join(cwd, 'vision-e2e.config.ts'),
+      join(cwd, 'argus-reviewer.config.ts'),
       `export default { model: 'test/model', budgetUsd: 0.5 } satisfies import('../../src/config.js').ConfigInput
 `,
     )
     const config = await loadConfig(cwd)
     expect(config.model).toBe('test/model')
     expect(config.budgetUsd).toBe(0.5)
+  })
+
+  it('still loads a legacy vision-e2e.config.json', async () => {
+    const { loadConfig } = await import('../../src/config.js')
+    const cwd = await mkdtemp(join(tmpdir(), 'argus-cfg-'))
+    await writeFile(join(cwd, 'vision-e2e.config.json'), JSON.stringify({ model: 'legacy/model' }))
+    expect((await loadConfig(cwd)).model).toBe('legacy/model')
   })
 })

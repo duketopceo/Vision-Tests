@@ -37,7 +37,8 @@ Usage:
   argus-reviewer init [--force]
   argus-reviewer --help
 
-Config: vision-e2e.config.ts or vision-e2e.config.json in the working directory
+Config: argus-reviewer.config.ts or argus-reviewer.config.json in the working directory
+        (legacy vision-e2e.config.* is still accepted)
 (model, escalation_model, provider rules, budgetUsd, target, cacheDir,
 testsDir, reportDir, secrets, logLevel, sourceGlobs, indexPath, diffBase).`;
 const RECORD_USAGE = `Usage: argus-reviewer record "<flow description>" --url <target> [options]
@@ -218,7 +219,7 @@ async function cmdRecord(args, ctx, deps) {
     try {
         target = await startTarget(config);
         driver = await launchDriver(config, deps);
-        const setupTmp = await mkdtemp(join(tmpdir(), 'vision-e2e-setup-'));
+        const setupTmp = await mkdtemp(join(tmpdir(), 'argus-setup-'));
         await applyPageSetup(config, driver, ctx, setupTmp);
         const client = createClient(deps, config, ctx);
         const ledger = new Ledger(config.budgetUsd);
@@ -366,6 +367,12 @@ async function cmdRun(args, ctx, deps) {
             ctx.err(`warning: ignoring invalid ARGUS_BUDGET_USD="${envBudget}"`);
     }
     const liveDir = resolve(ctx.cwd, config.cacheDir ?? '.argus-reviewer-cache');
+    // liveLog's mkdir is non-recursive by design — create a custom nested
+    // cache dir (and ancestors) here once so the first live write lands.
+    try {
+        await mkdir(liveDir, { recursive: true });
+    }
+    catch { /* liveLog stays best-effort */ }
     const logger = createLogger(resolveLogLevel(ctx.env, config.logLevel), ctx, (l, m) => liveLog(liveDir, 'run', l, m));
     const runErrors = [];
     const runId = newRunId();

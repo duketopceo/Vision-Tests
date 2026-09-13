@@ -22,6 +22,19 @@ function renderMissingKeyBody() {
   return lines.join('\n')
 }
 
+function renderNoReportBody(reportDir, runUrl) {
+  const lines = []
+  lines.push(SENTINEL)
+  lines.push('')
+  lines.push('## argus-reviewer ⚠️ no report')
+  lines.push('')
+  lines.push(`The run step produced no \`run.json\` under \`${reportDir}\`. The commit status fails closed — check the action logs before merging.`)
+  lines.push('')
+  lines.push(`[View run](${runUrl})`)
+  lines.push('')
+  return lines.join('\n')
+}
+
 function renderBody(report, codeReview, runUrl, ok) {
   if (!report) return renderMissingKeyBody()
 
@@ -217,7 +230,11 @@ async function main() {
   const repo = context.repo.repo
   const hasKey = !!process.env.OPENROUTER_API_KEY
   const workDir = process.env.VISION_E2E_WORKING_DIR || ''
-  const reportDir = path.resolve(process.env.GITHUB_WORKSPACE, workDir, 'argus-reviewer-report')
+  const reportDir = path.resolve(
+    process.env.GITHUB_WORKSPACE,
+    workDir,
+    process.env.ARGUS_REPORT_DIR || 'argus-reviewer-report',
+  )
   const runUrl = `${process.env.GITHUB_SERVER_URL}/${owner}/${repo}/actions/runs/${process.env.GITHUB_RUN_ID}`
 
   let report
@@ -237,29 +254,71 @@ async function main() {
     }
   }
 
-  const codeReviewOk = codeReview == null || codeReview.ok === true
+  // Missing code-review.json after a continue-on-error step means the review
+  // crashed, not that it skipped — an intentional skip writes ok+skipped.
+  // Fail closed rather than reporting it as a clean skip.
+  const codeReviewOk = codeReview != null && codeReview.ok === true
   const ok = (report?.ok === true) && codeReviewOk
   const conclusion = !hasKey ? 'neutral' : ok ? 'success' : 'failure'
-  const body = !hasKey ? renderMissingKeyBody() : renderBody(report, codeReview, runUrl, ok)
+  const body = !hasKey
+    ? renderMissingKeyBody()
+    : report === undefined
+      ? renderNoReportBody(reportDir, runUrl)
+      : renderBody(report, codeReview, runUrl, ok)
 
 async function postInlineComments(pr, codeReview) {
   if (!pr || !codeReview || codeReview.skipped || !codeReview.findings) return
-  const inlineSeverities = ['bug', 'risk', 'warning']
-  for (const f of codeReview.findings) {
-    if (!f.file || typeof f.line !== 'number' || !inlineSeverities.includes(f.severity)) continue
-    try {
-      await github.rest.pulls.createReviewComment({
-        owner: context.repo.owner,
-        repo: context.repo.repo,
-        pull_number: pr.number,
-        commit_id: pr.head.sha,
-        path: f.file,
-        line: f.line,
-        body: `**argus-reviewer ${f.severity}:** ${f.message}`,
-      })
-    } catch (e) {
-      core.warning(`inline review comment failed for ${f.file}:${f.line}: ${e.message}`)
+  // Must match the severity vocabulary emitted by the code-review schema
+  // (src/cli.ts): bug/risk are inline-worthy; nit/q stay in the sticky body.
+  const inlineSeverities = ['bug', 'risk']
+  const comments = codeReview.findings
+    .filter((f) => f.file && typeof f.line === 'number' && inlineSeverities.includes(f.severity))
+    .map((f) => ({
+      path: f.file,
+      line: f.line,
+      side: 'RIGHT',
+      body: `**argus-reviewer ${f.severity}:** ${f.message}`,
+    }))
+  if (comments.length === 0) return
+
+  // Re-runs on the same SHA must not duplicate inline comments — the sticky
+  // body is upserted but review comments are not. Paginate fully (100/page)
+  // and scope dedup to the current head: comments on older commits must not
+  // suppress findings that still apply to this head.
+  const posted = new Set()
+  let page = 1
+  for (;;) {
+    const { data: existing } = await github.rest.pulls.listReviewComments({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      pull_number: pr.number,
+      per_page: 100,
+      page,
+    })
+    for (const c of existing) {
+      if (c.body && c.body.startsWith('**argus-reviewer') && c.commit_id === pr.head.sha) {
+        posted.add(`${c.path}:${c.line}:${c.body}`)
+      }
     }
+    if (existing.length < 100) break
+    page += 1
+  }
+  const fresh = comments.filter((c) => !posted.has(`${c.path}:${c.line}:${c.body}`))
+  if (fresh.length === 0) return
+
+  // One batched review instead of N createReviewComment calls — avoids
+  // secondary rate limits on large findings sets.
+  try {
+    await github.rest.pulls.createReview({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      pull_number: pr.number,
+      commit_id: pr.head.sha,
+      event: 'COMMENT',
+      comments: fresh,
+    })
+  } catch (e) {
+    core.warning(`inline review failed: ${e.message}`)
   }
 }
 
@@ -290,13 +349,19 @@ async function postInlineComments(pr, codeReview) {
   }
 
   const sha = pr ? pr.head.sha : context.sha
-  const state = conclusion === 'success' ? 'success' : conclusion === 'failure' ? 'failure' : 'pending'
+  // Commit statuses have no 'neutral'; a 'pending' skip would wedge a
+  // required check forever, so skip maps to success with a clear label.
+  const state = conclusion === 'failure' ? 'failure' : 'success'
+  const description =
+    conclusion === 'neutral'
+      ? 'argus-reviewer skipped (no OPENROUTER_API_KEY)'
+      : `argus-reviewer ${conclusion}`
   await github.rest.repos.createCommitStatus({
     owner,
     repo,
     sha,
     state,
-    description: `argus-reviewer ${conclusion}`,
+    description,
     context: 'argus-reviewer',
     target_url: runUrl,
   })

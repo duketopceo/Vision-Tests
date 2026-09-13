@@ -24,7 +24,7 @@ describe('BrowserDriver + Actions (fixture page)', () => {
   let videoPath: string | undefined
 
   beforeAll(async () => {
-    videoDir = await mkdtemp(join(tmpdir(), 'vision-e2e-test-video-'))
+    videoDir = await mkdtemp(join(tmpdir(), 'argus-test-video-'))
     driver = await BrowserDriver.launch({
       viewport: { width: 1280, height: 720 },
       videoDir,
@@ -98,7 +98,7 @@ describe('TargetProcess boot adapter', () => {
 
     const res = await fetch(`http://127.0.0.1:${port}/`)
     expect(res.status).toBe(200)
-    expect(await res.text()).toContain('vision-e2e fixture')
+    expect(await res.text()).toContain('argus fixture')
 
     const pid = target.pid
     await target.stop()

@@ -9,16 +9,17 @@ const LIVE_DIR = join(process.cwd(), '.argus-reviewer-cache')
 function toMsg(arg: unknown): string {
   if (typeof arg === 'string') return arg
   try {
-    return JSON.stringify(arg)
+    const s = JSON.stringify(arg)
+    return s === undefined ? String(arg) : s // JSON.stringify(undefined) -> undefined
   } catch {
     return String(arg) // BigInt, cyclic refs — never throw from a debug call
   }
 }
 
 export function debug(kind: string, ...args: unknown[]): void {
+  if (!DEBUG) return // keep debug() free of fs work on the hot path
   for (const arg of args) {
     liveLog(LIVE_DIR, kind, 'debug', toMsg(arg))
-    if (!DEBUG) continue
     const prefix = `[argus-reviewer:${kind}]`
     if (typeof arg === 'string') {
       console.error(`${prefix} ${arg}`)

@@ -41,8 +41,10 @@ export function liveLog(dir: string, source: string, level: string, msg: string)
         const start = Math.max(0, buf.length - KEEP_BYTES)
         const nl = buf.indexOf(0x0a, start)
         // Atomic replace gives live.ndjson a new inode, which is how
-        // tailers detect that rotation happened and re-seed.
-        const tmp = `${path}.tmp`
+        // tailers detect that rotation happened and re-seed. The tmp name is
+        // per-process so concurrent argus runs can't clobber each other's
+        // half-written rotation.
+        const tmp = `${path}.${process.pid}.tmp`
         writeFileSync(tmp, nl === -1 ? buf.subarray(start) : buf.subarray(nl + 1))
         renameSync(tmp, path)
       }

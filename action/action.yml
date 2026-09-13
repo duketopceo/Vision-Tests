@@ -11,7 +11,7 @@ inputs:
     required: false
   config:
     description: Path to the argus-reviewer config file
-    default: vision-e2e.config.ts
+    default: argus-reviewer.config.ts
     required: false
   working-directory:
     description: Working directory for the consumer's project
@@ -33,6 +33,10 @@ inputs:
     required: false
   cache-dependency-path:
     description: npm lockfile path for setup-node cache (defaults to <working-directory>/package-lock.json)
+    required: false
+  report-dir:
+    description: Report output dir, passed to both run and code-review so the post step can find run.json/code-review.json regardless of config reportDir
+    default: argus-reviewer-report
     required: false
 outputs:
   conclusion:
@@ -61,8 +65,13 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: |
-        if [ "${{ inputs.config }}" != "vision-e2e.config.ts" ]; then
-          cp "${{ inputs.config }}" vision-e2e.config.ts
+        if [ "${{ inputs.config }}" != "argus-reviewer.config.ts" ]; then
+          ext="${{ inputs.config }}"
+          ext="${ext##*.}"
+          case "$ext" in
+            ts|json) cp "${{ inputs.config }}" "argus-reviewer.config.$ext" ;;
+            *) echo "unsupported config extension: $ext" >&2; exit 1 ;;
+          esac
         fi
 
     - name: Build repo index
@@ -87,7 +96,7 @@ runs:
           "run_id":"${{ github.run_id }}",
           "run_attempt":"${{ github.run_attempt }}",
           "workflow":"${{ github.workflow }}"}
-      run: ${{ inputs.cli }} code-review
+      run: ${{ inputs.cli }} code-review --report-dir "${{ inputs.report-dir }}"
 
     - name: Run argus-reviewer
       id: run
@@ -106,7 +115,7 @@ runs:
           "run_id":"${{ github.run_id }}",
           "run_attempt":"${{ github.run_attempt }}",
           "workflow":"${{ github.workflow }}"}
-      run: ${{ inputs.cli }} run
+      run: ${{ inputs.cli }} run --report-dir "${{ inputs.report-dir }}"
 
     - name: Post or update sticky PR comment
       id: post
@@ -114,6 +123,7 @@ runs:
       env:
         OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
         VISION_E2E_WORKING_DIR: ${{ inputs.working-directory }}
+        ARGUS_REPORT_DIR: ${{ inputs.report-dir }}
       with:
         github-token: ${{ github.token }}
         script: |

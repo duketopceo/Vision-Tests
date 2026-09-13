@@ -55,7 +55,7 @@ export class BrowserDriver {
 
   static async launch(options: BrowserDriverOptions = {}): Promise<BrowserDriver> {
     const viewport = options.viewport ?? DEFAULT_VIEWPORT
-    const videoDir = options.videoDir ?? (await mkdtemp(join(tmpdir(), 'vision-e2e-video-')))
+    const videoDir = options.videoDir ?? (await mkdtemp(join(tmpdir(), 'argus-video-')))
     await mkdir(videoDir, { recursive: true })
 
     const browserName = options.browser ?? 'chromium'
@@ -138,7 +138,7 @@ export class BrowserDriver {
         setAttribute: (k: string, v: string) => void
         style: { cssText: string }
       }
-      overlay.id = '__vision_e2e_grid'
+      overlay.id = '__argus_grid'
       overlay.setAttribute('aria-hidden', 'true')
       overlay.style.cssText =
         'position:fixed;inset:0;z-index:2147483647;pointer-events:none;' +
@@ -154,7 +154,7 @@ export class BrowserDriver {
         style: { cssText: string }
         textContent: string
       }
-      labels.id = '__vision_e2e_grid_labels'
+      labels.id = '__argus_grid_labels'
       labels.setAttribute('aria-hidden', 'true')
       labels.style.cssText =
         'position:fixed;inset:0;z-index:2147483647;pointer-events:none;' +
@@ -187,7 +187,7 @@ export class BrowserDriver {
             document: { getElementById: (id: string) => { remove: () => void } | null }
           }
         ).document
-        for (const id of ['__vision_e2e_grid', '__vision_e2e_grid_labels']) {
+        for (const id of ['__argus_grid', '__argus_grid_labels']) {
           doc.getElementById(id)?.remove()
         }
       })
