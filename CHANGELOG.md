@@ -1,10 +1,9 @@
 # Changelog
 
 All notable changes to argus-reviewer are documented here. The project is
-pre-release (`0.0.x`); breaking changes may ship without a major bump until
-`0.1.0`.
+pre-1.0; breaking changes may ship without a major bump until `1.0.0`.
 
-## [Unreleased]
+## [0.1.0] — 2026-09-12
 
 ### Added
 - Live NDJSON log (`<cacheDir>/live.ndjson`) tailed by the Electron dashboard's
