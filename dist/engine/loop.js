@@ -34,10 +34,27 @@ export class Engine {
         this._visionCalls = 0;
         this._steps = [];
         this._fingerprints = [];
-        const cap = options.stepCap ?? 10;
+        const cap = options.stepCap ?? this._opts.config.recordStepCap ?? 40;
+        const history = [];
         let observation = await this._opts.driver.observe({ grid: true });
+        const describe = (action) => {
+            switch (action.action) {
+                case 'click':
+                    return `click @ (${action.x ?? '?'},${action.y ?? '?'})`;
+                case 'type':
+                    return `type "${(action.text ?? '').slice(0, 40)}"`;
+                case 'pressKeys':
+                    return `pressKeys ${(action.keys ?? []).join('+')}`;
+                case 'scroll':
+                    return `scroll (${action.dx ?? 0},${action.dy ?? 0})`;
+                case 'wait':
+                    return `wait ${action.ms ?? 0}ms`;
+                default:
+                    return action.action;
+            }
+        };
         for (let i = 0; i < cap; i++) {
-            const response = await this._callModel('ground', buildActionMessages(instruction, observation));
+            const response = await this._callModel('ground', buildActionMessages(instruction, observation, history));
             if (!response) {
                 return this._result(false, 'budget exceeded or model call blocked');
             }
@@ -67,6 +84,7 @@ export class Engine {
             const fingerprint = await this._buildFingerprint(instruction, action, resolved, response.model);
             this._fingerprints.push(fingerprint);
             this._steps.push({ instruction, action: action.action, ok: true, model: response.model });
+            history.push(describe(action));
             observation = nextObservation;
         }
         if (options.flowName && this._opts.config.cacheDir) {
@@ -74,7 +92,7 @@ export class Engine {
         }
         const finished = this._steps[this._steps.length - 1]?.action === 'done';
         if (!finished) {
-            return this._result(false, `step cap of ${cap} reached without done`);
+            return this._result(false, `record did not finish after ${cap} steps — raise the cap with --max-steps or config.recordStepCap`);
         }
         return this._result(true);
     }

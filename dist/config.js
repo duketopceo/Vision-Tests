@@ -23,6 +23,7 @@ const defaults = {
     sourceGlobs: undefined,
     indexPath: undefined,
     diffBase: undefined,
+    recordStepCap: 40,
 };
 export function defineConfig(input) {
     return input;

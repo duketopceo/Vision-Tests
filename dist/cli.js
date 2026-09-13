@@ -47,6 +47,7 @@ Options:
   --url <url>        Target URL (falls back to config.target.url)
   --name <name>      Flow name for the cache + generated test file
   --tests-dir <dir>  Where to write the generated test file (default: config testsDir or ./tests)
+  --max-steps <n>    Step cap before giving up on 'done' (default: config recordStepCap or 40)
   -h, --help         Show this help`;
 const RUN_USAGE = `Usage: argus-reviewer run [pattern] [options]
 
@@ -195,6 +196,7 @@ async function cmdRecord(args, ctx, deps) {
             url: { type: 'string' },
             name: { type: 'string' },
             'tests-dir': { type: 'string' },
+            'max-steps': { type: 'string' },
         },
     });
     if (values.help) {
@@ -214,6 +216,11 @@ async function cmdRecord(args, ctx, deps) {
         return 2;
     }
     const flowName = values.name ?? slugify(description);
+    const maxSteps = values['max-steps'] !== undefined ? Number(values['max-steps']) : undefined;
+    if (maxSteps !== undefined && (!Number.isInteger(maxSteps) || maxSteps < 1)) {
+        ctx.err(`--max-steps must be a positive integer, got "${values['max-steps']}"`);
+        return 2;
+    }
     let target;
     let driver;
     try {
@@ -227,7 +234,7 @@ async function cmdRecord(args, ctx, deps) {
         const engine = new Engine({ driver, actions, client, ledger, config });
         ledger.startSandbox();
         await driver.goto(target?.url ?? url);
-        const result = await engine.record(description, actions, { flowName });
+        const result = await engine.record(description, actions, maxSteps === undefined ? { flowName } : { flowName, stepCap: maxSteps });
         ledger.stopSandbox();
         const state = ledger.state;
         ctx.out(`record ${result.ok ? 'succeeded' : 'FAILED'}: ${result.steps.length} steps, ` +

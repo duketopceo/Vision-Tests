@@ -55,8 +55,14 @@ export const assertionSchema = {
         additionalProperties: false,
     },
 };
-export function buildActionMessages(instruction, observation) {
-    const text = `Instruction: ${instruction}\n\nViewport: ${observation.width}x${observation.height} CSS pixels (the screenshot dimensions match exactly).\n\nA11y tree:\n${observation.a11yYaml}`;
+export function buildActionMessages(instruction, observation, history = []) {
+    // Record is a loop of these calls — the model needs the transcript of
+    // actions already taken or it cannot tell whether the goal is reached and
+    // will keep proposing actions past it (never emitting `done`).
+    const historyBlock = history.length > 0
+        ? `\n\nSteps already taken in this flow:\n${history.map((h, i) => `- #${i + 1} ${h}`).join('\n')}`
+        : '';
+    const text = `Instruction: ${instruction}${historyBlock}\n\nViewport: ${observation.width}x${observation.height} CSS pixels (the screenshot dimensions match exactly).\n\nA11y tree:\n${observation.a11yYaml}`;
     return [
         { role: 'system', content: [{ type: 'text', text: ACTION_SYSTEM }] },
         {

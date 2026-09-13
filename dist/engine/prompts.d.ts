@@ -10,5 +10,5 @@ export interface AssertionResult {
 }
 export declare const actionSchema: JsonSchema;
 export declare const assertionSchema: JsonSchema;
-export declare function buildActionMessages(instruction: string, observation: Observation): Message[];
+export declare function buildActionMessages(instruction: string, observation: Observation, history?: string[]): Message[];
 export declare function buildAssertMessages(question: string, observation: Observation): Message[];
