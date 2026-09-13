@@ -17,9 +17,9 @@ function toMsg(arg: unknown): string {
 }
 
 export function debug(kind: string, ...args: unknown[]): void {
+  if (!DEBUG) return // keep debug() free of fs work on the hot path
   for (const arg of args) {
     liveLog(LIVE_DIR, kind, 'debug', toMsg(arg))
-    if (!DEBUG) continue
     const prefix = `[argus-reviewer:${kind}]`
     if (typeof arg === 'string') {
       console.error(`${prefix} ${arg}`)
