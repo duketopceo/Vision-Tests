@@ -47,7 +47,7 @@ argus-reviewer/
 │   ├── cli.ts               # `record`, `run`, and `cache` commands
 │   ├── config.ts            # `argus-reviewer.config.*` loader (legacy `vision-e2e.config.*` accepted)
 │   ├── driver/
-│   │   ├── browser.ts       # Playwright Chromium launch + observation capture
+│   │   ├── browser.ts       # Playwright browser launch (chromium/firefox/webkit) + observation capture
 │   │   └── target.ts        # Optional local dev-server target process
 │   ├── engine/
 │   │   ├── actions.ts       # Low-level page actions (click, type, scroll, …)

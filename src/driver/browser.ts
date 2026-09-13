@@ -63,7 +63,16 @@ export class BrowserDriver {
     if (browserType === undefined) {
       throw new Error(`unknown browser: ${browserName}`)
     }
-    const browser = await browserType.launch({ headless: true })
+    let browser: Browser
+    try {
+      browser = await browserType.launch({ headless: true })
+    } catch (e) {
+      const msg = (e as Error).message
+      if (/executable doesn't exist|browser has not been installed/i.test(msg)) {
+        throw new Error(`${msg}\nHint: install it with \`npx playwright install ${browserName}\``)
+      }
+      throw e
+    }
     try {
       const context = await browser.newContext({
         viewport,

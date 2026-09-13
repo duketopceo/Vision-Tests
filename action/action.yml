@@ -31,6 +31,10 @@ inputs:
     description: Node.js version for the harness (Node 20 is deprecated on GH runners)
     default: '22'
     required: false
+  browser:
+    description: Playwright browser engine to install and run (chromium, firefox, or webkit). Should match config.browser.
+    default: 'chromium'
+    required: false
   cache-dependency-path:
     description: npm lockfile path for setup-node cache (defaults to <working-directory>/package-lock.json)
     required: false
@@ -56,10 +60,10 @@ runs:
       working-directory: ${{ inputs.working-directory }}
       run: npm ci
 
-    - name: Install Playwright Chromium
+    - name: Install Playwright browser
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: npx playwright install chromium
+      run: npx playwright install "${{ inputs.browser }}"
 
     - name: Stage config
       shell: bash
