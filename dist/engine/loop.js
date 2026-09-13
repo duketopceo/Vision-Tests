@@ -1,3 +1,4 @@
+import { DEFAULT_RECORD_STEP_CAP } from '../config.js';
 import { computeRegionHash, Fingerprint, fnv1a, } from '../cache/fingerprint.js';
 import { saveFlow } from '../cache/store.js';
 import { actionSchema, assertionSchema, buildActionMessages, buildAssertMessages, } from './prompts.js';
@@ -34,27 +35,10 @@ export class Engine {
         this._visionCalls = 0;
         this._steps = [];
         this._fingerprints = [];
-        const cap = options.stepCap ?? this._opts.config.recordStepCap ?? 40;
-        const history = [];
+        const cap = options.stepCap ?? this._opts.config.recordStepCap ?? DEFAULT_RECORD_STEP_CAP;
         let observation = await this._opts.driver.observe({ grid: true });
-        const describe = (action) => {
-            switch (action.action) {
-                case 'click':
-                    return `click @ (${action.x ?? '?'},${action.y ?? '?'})`;
-                case 'type':
-                    return `type "${(action.text ?? '').slice(0, 40)}"`;
-                case 'pressKeys':
-                    return `pressKeys ${(action.keys ?? []).join('+')}`;
-                case 'scroll':
-                    return `scroll (${action.dx ?? 0},${action.dy ?? 0})`;
-                case 'wait':
-                    return `wait ${action.ms ?? 0}ms`;
-                default:
-                    return action.action;
-            }
-        };
         for (let i = 0; i < cap; i++) {
-            const response = await this._callModel('ground', buildActionMessages(instruction, observation, history));
+            const response = await this._callModel('ground', buildActionMessages(instruction, observation, this._fingerprints.map((f) => ({ action: f.action, label: f.a11ySnippet }))));
             if (!response) {
                 return this._result(false, 'budget exceeded or model call blocked');
             }
@@ -84,7 +68,6 @@ export class Engine {
             const fingerprint = await this._buildFingerprint(instruction, action, resolved, response.model);
             this._fingerprints.push(fingerprint);
             this._steps.push({ instruction, action: action.action, ok: true, model: response.model });
-            history.push(describe(action));
             observation = nextObservation;
         }
         if (options.flowName && this._opts.config.cacheDir) {

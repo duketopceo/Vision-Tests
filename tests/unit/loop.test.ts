@@ -307,8 +307,8 @@ describe('Engine record/replay', () => {
     expect(record.ok).toBe(true)
     expect(client.calls[0].userText).not.toContain('Steps already taken')
     expect(client.calls[1].userText).toContain('Steps already taken')
-    expect(client.calls[1].userText).toContain('#1 click @ (200,130)')
-    expect(client.calls[2].userText).toContain('#2 click @ (200,130)')
+    expect(client.calls[1].userText).toMatch(/#1 click .*\(200,130\)/)
+    expect(client.calls[2].userText).toMatch(/#2 click .*\(200,130\)/)
   })
 
   it('record fails with a cap hint when the model never returns done', async () => {

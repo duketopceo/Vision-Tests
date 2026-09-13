@@ -10,5 +10,13 @@ export interface AssertionResult {
 }
 export declare const actionSchema: JsonSchema;
 export declare const assertionSchema: JsonSchema;
-export declare function buildActionMessages(instruction: string, observation: Observation, history?: string[]): Message[];
+/** One executed record step as it appears in the next prompt's transcript. */
+export interface PriorAction {
+    action: ActionPayload;
+    /** Resolved element label (a11y snippet) when the action hit a node. */
+    label?: string;
+}
+/** Compact one-line rendering of an executed action for the record transcript. */
+export declare function describeAction(action: ActionPayload, label?: string): string;
+export declare function buildActionMessages(instruction: string, observation: Observation, priorActions?: PriorAction[]): Message[];
 export declare function buildAssertMessages(question: string, observation: Observation): Message[];

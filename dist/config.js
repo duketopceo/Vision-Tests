@@ -1,4 +1,5 @@
 import { pathToFileURL } from 'node:url';
+export const DEFAULT_RECORD_STEP_CAP = 40;
 const defaults = {
     model: 'google/gemini-2.5-flash-lite',
     escalation_model: 'moonshotai/kimi-k2.5',
@@ -23,7 +24,7 @@ const defaults = {
     sourceGlobs: undefined,
     indexPath: undefined,
     diffBase: undefined,
-    recordStepCap: 40,
+    recordStepCap: DEFAULT_RECORD_STEP_CAP,
 };
 export function defineConfig(input) {
     return input;

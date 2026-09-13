@@ -1,6 +1,6 @@
 import { BrowserDriver, Observation } from '../driver/browser.js'
 import { Actions } from './actions.js'
-import { Config, ProviderRules } from '../config.js'
+import { Config, DEFAULT_RECORD_STEP_CAP, ProviderRules } from '../config.js'
 import { CallCost, CallKind } from '../vision/cost.js'
 import { Ledger } from '../vision/ledger.js'
 import { JsonSchema, Message } from '../vision/openrouter.js'
@@ -137,31 +137,17 @@ export class Engine {
     this._steps = []
     this._fingerprints = []
 
-    const cap = options.stepCap ?? this._opts.config.recordStepCap ?? 40
-    const history: string[] = []
+    const cap = options.stepCap ?? this._opts.config.recordStepCap ?? DEFAULT_RECORD_STEP_CAP
     let observation = await this._opts.driver.observe({ grid: true })
-
-    const describe = (action: ProposedAction): string => {
-      switch (action.action) {
-        case 'click':
-          return `click @ (${action.x ?? '?'},${action.y ?? '?'})`
-        case 'type':
-          return `type "${(action.text ?? '').slice(0, 40)}"`
-        case 'pressKeys':
-          return `pressKeys ${(action.keys ?? []).join('+')}`
-        case 'scroll':
-          return `scroll (${action.dx ?? 0},${action.dy ?? 0})`
-        case 'wait':
-          return `wait ${action.ms ?? 0}ms`
-        default:
-          return action.action
-      }
-    }
 
     for (let i = 0; i < cap; i++) {
       const response = await this._callModel(
         'ground',
-        buildActionMessages(instruction, observation, history),
+        buildActionMessages(
+          instruction,
+          observation,
+          this._fingerprints.map((f) => ({ action: f.action, label: f.a11ySnippet })),
+        ),
       )
       if (!response) {
         return this._result(false, 'budget exceeded or model call blocked')
@@ -202,7 +188,6 @@ export class Engine {
 
       this._fingerprints.push(fingerprint)
       this._steps.push({ instruction, action: action.action, ok: true, model: response.model })
-      history.push(describe(action))
       observation = nextObservation
     }
 

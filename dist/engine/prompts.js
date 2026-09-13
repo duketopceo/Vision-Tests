@@ -55,12 +55,32 @@ export const assertionSchema = {
         additionalProperties: false,
     },
 };
-export function buildActionMessages(instruction, observation, history = []) {
+/** Compact one-line rendering of an executed action for the record transcript. */
+export function describeAction(action, label) {
+    const target = label !== undefined ? ` "${label.slice(0, 40)}"` : '';
+    switch (action.action) {
+        case 'click':
+            return `click${target} @ (${action.x ?? '?'},${action.y ?? '?'})`;
+        case 'type':
+            return `type "${(action.text ?? '').slice(0, 40)}"`;
+        case 'pressKeys':
+            return `pressKeys ${(action.keys ?? []).join('+')}`;
+        case 'scroll':
+            return `scroll (${action.dx ?? 0},${action.dy ?? 0})`;
+        case 'wait':
+            return `wait ${action.ms ?? 0}ms`;
+        default:
+            return action.action;
+    }
+}
+export function buildActionMessages(instruction, observation, priorActions = []) {
     // Record is a loop of these calls — the model needs the transcript of
     // actions already taken or it cannot tell whether the goal is reached and
     // will keep proposing actions past it (never emitting `done`).
-    const historyBlock = history.length > 0
-        ? `\n\nSteps already taken in this flow:\n${history.map((h, i) => `- #${i + 1} ${h}`).join('\n')}`
+    const historyBlock = priorActions.length > 0
+        ? `\n\nSteps already taken in this flow:\n${priorActions
+            .map((p, i) => `- #${i + 1} ${describeAction(p.action, p.label)}`)
+            .join('\n')}`
         : '';
     const text = `Instruction: ${instruction}${historyBlock}\n\nViewport: ${observation.width}x${observation.height} CSS pixels (the screenshot dimensions match exactly).\n\nA11y tree:\n${observation.a11yYaml}`;
     return [

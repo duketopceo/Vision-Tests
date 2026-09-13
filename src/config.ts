@@ -100,6 +100,8 @@ export interface Config {
 
 export type ConfigInput = Partial<Omit<Config, 'provider'>> & { provider?: Partial<ProviderRules> }
 
+export const DEFAULT_RECORD_STEP_CAP = 40
+
 const defaults: Config = {
   model: 'google/gemini-2.5-flash-lite',
   escalation_model: 'moonshotai/kimi-k2.5',
@@ -124,7 +126,7 @@ const defaults: Config = {
   sourceGlobs: undefined,
   indexPath: undefined,
   diffBase: undefined,
-  recordStepCap: 40,
+  recordStepCap: DEFAULT_RECORD_STEP_CAP,
 }
 
 export function defineConfig(input: ConfigInput): ConfigInput {

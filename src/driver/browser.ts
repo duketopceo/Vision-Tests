@@ -69,7 +69,9 @@ export class BrowserDriver {
     } catch (e) {
       const msg = (e as Error).message
       if (/executable doesn't exist|browser has not been installed/i.test(msg)) {
-        throw new Error(`${msg}\nHint: install it with \`npx playwright install ${browserName}\``)
+        throw new Error(`${msg}\nHint: install it with \`npx playwright install ${browserName}\``, {
+          cause: e,
+        })
       }
       throw e
     }

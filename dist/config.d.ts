@@ -99,6 +99,7 @@ export interface Config {
 export type ConfigInput = Partial<Omit<Config, 'provider'>> & {
     provider?: Partial<ProviderRules>;
 };
+export declare const DEFAULT_RECORD_STEP_CAP = 40;
 export declare function defineConfig(input: ConfigInput): ConfigInput;
 export declare function resolveConfig(input?: ConfigInput): Config;
 export declare function loadConfig(cwd: string): Promise<Config>;
