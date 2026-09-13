@@ -135,11 +135,13 @@ export function defineConfig(input: ConfigInput): ConfigInput {
 
 export function resolveConfig(input: ConfigInput = {}): Config {
   const provider: ProviderRules = { ...defaults.provider, ...(input.provider ?? {}) }
-  return {
-    ...defaults,
-    ...input,
-    provider,
-  }
+  const resolved: Config = { ...defaults, ...input, provider }
+  const cap = resolved.recordStepCap
+  resolved.recordStepCap =
+    cap !== undefined && Number.isFinite(cap) && cap >= 1
+      ? Math.floor(cap)
+      : DEFAULT_RECORD_STEP_CAP
+  return resolved
 }
 
 export async function loadConfig(cwd: string): Promise<Config> {

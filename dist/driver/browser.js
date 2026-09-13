@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { debug } from '../debug.js';
@@ -32,18 +32,21 @@ export class BrowserDriver {
     }
     static async launch(options = {}) {
         const viewport = options.viewport ?? DEFAULT_VIEWPORT;
-        const videoDir = options.videoDir ?? (await mkdtemp(join(tmpdir(), 'argus-video-')));
-        await mkdir(videoDir, { recursive: true });
         const browserName = options.browser ?? 'chromium';
         const browserType = { chromium, firefox, webkit }[browserName];
         if (browserType === undefined) {
             throw new Error(`unknown browser: ${browserName}`);
         }
+        const ownsVideoDir = options.videoDir === undefined;
+        const videoDir = options.videoDir ?? (await mkdtemp(join(tmpdir(), 'vision-e2e-video-')));
+        await mkdir(videoDir, { recursive: true });
+        const cleanupVideoDir = () => ownsVideoDir ? rm(videoDir, { recursive: true, force: true }).catch(() => undefined) : Promise.resolve();
         let browser;
         try {
             browser = await browserType.launch({ headless: true });
         }
         catch (e) {
+            await cleanupVideoDir();
             const msg = e.message;
             if (/executable doesn't exist|browser has not been installed/i.test(msg)) {
                 throw new Error(`${msg}\nHint: install it with \`npx playwright install ${browserName}\``, {
@@ -63,6 +66,7 @@ export class BrowserDriver {
         }
         catch (e) {
             await browser.close().catch(() => undefined);
+            await cleanupVideoDir();
             throw e;
         }
     }
@@ -85,8 +89,18 @@ export class BrowserDriver {
      */
     async observe(options = {}) {
         const grid = options.grid === true;
-        if (grid)
-            await this._paintGrid();
+        let painted = false;
+        if (grid) {
+            try {
+                await this._removeGrid(); // stale overlay from a failed prior paint
+                await this._paintGrid();
+                painted = true;
+            }
+            catch {
+                // Navigation race (execution context destroyed) or no document body —
+                // degrade to an ungridded observation rather than aborting the step.
+            }
+        }
         try {
             const screenshotJpeg = await this.page.screenshot({
                 type: 'jpeg',
@@ -97,7 +111,7 @@ export class BrowserDriver {
             return { screenshotJpeg, a11yYaml, width: this.viewport.width, height: this.viewport.height };
         }
         finally {
-            if (grid)
+            if (painted)
                 await this._removeGrid();
         }
     }
@@ -105,7 +119,7 @@ export class BrowserDriver {
         await this.page.evaluate(() => {
             const doc = globalThis.document;
             const overlay = doc.createElement('div');
-            overlay.id = '__argus_grid';
+            overlay.id = '__vision_e2e_grid';
             overlay.setAttribute('aria-hidden', 'true');
             overlay.style.cssText =
                 'position:fixed;inset:0;z-index:2147483647;pointer-events:none;' +
@@ -115,7 +129,7 @@ export class BrowserDriver {
                     'background-size:100px 100px;';
             doc.body.appendChild(overlay);
             const labels = doc.createElement('div');
-            labels.id = '__argus_grid_labels';
+            labels.id = '__vision_e2e_grid_labels';
             labels.setAttribute('aria-hidden', 'true');
             labels.style.cssText =
                 'position:fixed;inset:0;z-index:2147483647;pointer-events:none;' +
@@ -136,7 +150,7 @@ export class BrowserDriver {
         await this.page
             .evaluate(() => {
             const doc = globalThis.document;
-            for (const id of ['__argus_grid', '__argus_grid_labels']) {
+            for (const id of ['__vision_e2e_grid', '__vision_e2e_grid_labels']) {
                 doc.getElementById(id)?.remove();
             }
         })
@@ -177,7 +191,10 @@ export class BrowserDriver {
     _withTimeout(promise) {
         return Promise.race([
             promise,
-            new Promise((_, reject) => setTimeout(() => reject(new Error('browser cleanup timed out')), this.browserTimeoutMs)),
+            new Promise((_, reject) => {
+                const t = setTimeout(() => reject(new Error('browser cleanup timed out')), this.browserTimeoutMs);
+                t.unref?.();
+            }),
         ]);
     }
 }

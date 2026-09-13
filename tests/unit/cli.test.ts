@@ -62,6 +62,20 @@ describe('argus-reviewer CLI', () => {
     expect(out.lines.join('\n')).toContain('argus-reviewer record')
   })
 
+  it('record rejects a non-positive-integer --max-steps before launching', async () => {
+    const cwd = await mkdtemp(join(tmpdir(), 'argus-maxsteps-'))
+    const out = capture()
+    const err = capture()
+    for (const bad of ['0', '-3', '1.5', 'abc']) {
+      const code = await main(
+        ['record', 'click the thing', '--url', FIXTURE_URL, `--max-steps=${bad}`],
+        { cwd, out: out.fn, err: err.fn },
+      )
+      expect(code).toBe(2)
+    }
+    expect(err.lines.join('\n')).toContain('--max-steps must be a positive integer')
+  })
+
   it('runs a td-API test file end-to-end, warns on unknown provider slugs, writes JUnit + report', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'argus-cli-'))
     const testsDir = join(cwd, 'tests')

@@ -56,6 +56,15 @@ describe('BrowserDriver + Actions (fixture page)', () => {
     expect(screenshotJpeg.length).toBeLessThan(200_000)
   })
 
+  it('grid overlay does not leak into the a11y snapshot', async () => {
+    const plain = await driver.observe()
+    const gridded = await driver.observe({ grid: true })
+    expect(gridded.a11yYaml).toBe(plain.a11yYaml)
+    expect(gridded.a11yYaml).not.toContain('__vision_e2e_grid')
+    // And the overlay is removed afterwards — a second plain observe is clean.
+    expect((await driver.observe()).a11yYaml).toBe(plain.a11yYaml)
+  })
+
   it('observation includes a11y YAML text from the page', async () => {
     const { a11yYaml } = await driver.observe()
     expect(a11yYaml).toContain('button')

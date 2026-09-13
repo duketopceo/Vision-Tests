@@ -299,14 +299,16 @@ async function cmdRecord(args: string[], ctx: Ctx, deps: CliDeps): Promise<numbe
     if (result.reason !== undefined) ctx.err(`reason: ${result.reason}`)
     if (state.budgetExceeded) ctx.err('budget cap was hit during record')
 
-    const testsDir = resolve(ctx.cwd, values['tests-dir'] ?? config.testsDir ?? 'tests')
-    await mkdir(testsDir, { recursive: true })
-    const cacheDir = config.cacheDir ?? join(ctx.cwd, '.argus-reviewer-cache')
-    const flow = await loadFlow(cacheDir, flowName)
-    const testFile = join(testsDir, `${flowName}.test.ts`)
-    await writeFile(testFile, renderTestFile(flowName, flow?.steps ?? []), 'utf8')
-    ctx.out(`wrote test file: ${testFile}`)
-    if (config.cacheDir !== undefined) ctx.out(`wrote cache: ${flowPath(cacheDir, flowName)}`)
+    if (result.ok) {
+      const testsDir = resolve(ctx.cwd, values['tests-dir'] ?? config.testsDir ?? 'tests')
+      await mkdir(testsDir, { recursive: true })
+      const cacheDir = config.cacheDir ?? join(ctx.cwd, '.argus-reviewer-cache')
+      const flow = await loadFlow(cacheDir, flowName)
+      const testFile = join(testsDir, `${flowName}.test.ts`)
+      await writeFile(testFile, renderTestFile(flowName, flow?.steps ?? []), 'utf8')
+      ctx.out(`wrote test file: ${testFile}`)
+      if (config.cacheDir !== undefined) ctx.out(`wrote cache: ${flowPath(cacheDir, flowName)}`)
+    }
 
     return result.ok ? 0 : 1
   } catch (e) {

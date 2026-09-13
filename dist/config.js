@@ -31,11 +31,13 @@ export function defineConfig(input) {
 }
 export function resolveConfig(input = {}) {
     const provider = { ...defaults.provider, ...(input.provider ?? {}) };
-    return {
-        ...defaults,
-        ...input,
-        provider,
-    };
+    const resolved = { ...defaults, ...input, provider };
+    const cap = resolved.recordStepCap;
+    resolved.recordStepCap =
+        cap !== undefined && Number.isFinite(cap) && cap >= 1
+            ? Math.floor(cap)
+            : DEFAULT_RECORD_STEP_CAP;
+    return resolved;
 }
 export async function loadConfig(cwd) {
     const fs = await import('node:fs/promises');

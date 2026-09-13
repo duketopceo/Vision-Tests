@@ -81,12 +81,15 @@ export interface PriorAction {
 
 /** Compact one-line rendering of an executed action for the record transcript. */
 export function describeAction(action: ActionPayload, label?: string): string {
-  const target = label !== undefined ? ` "${label.slice(0, 40)}"` : ''
+  // Transcript lines must stay single-line and quote-safe — label/text come
+  // from a11y snippets and model output.
+  const clean = (s: string) => s.replace(/\s+/g, ' ').trim().replace(/"/g, "'").slice(0, 40)
+  const target = label !== undefined && label.trim() !== '' ? ` "${clean(label)}"` : ''
   switch (action.action) {
     case 'click':
       return `click${target} @ (${action.x ?? '?'},${action.y ?? '?'})`
     case 'type':
-      return `type "${(action.text ?? '').slice(0, 40)}"`
+      return `type "${clean(action.text ?? '')}"`
     case 'pressKeys':
       return `pressKeys ${(action.keys ?? []).join('+')}`
     case 'scroll':

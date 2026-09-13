@@ -191,16 +191,16 @@ export class Engine {
       observation = nextObservation
     }
 
-    if (options.flowName && this._opts.config.cacheDir) {
-      await saveFlow(this._opts.config.cacheDir, options.flowName, this._fingerprints)
-    }
-
     const finished = this._steps[this._steps.length - 1]?.action === 'done'
     if (!finished) {
       return this._result(
         false,
         `record did not finish after ${cap} steps — raise the cap with --max-steps or config.recordStepCap`,
       )
+    }
+
+    if (options.flowName && this._opts.config.cacheDir) {
+      await saveFlow(this._opts.config.cacheDir, options.flowName, this._fingerprints)
     }
 
     return this._result(true)
@@ -213,7 +213,7 @@ export class Engine {
     for (let i = 0; i < flow.steps.length; i++) {
       const step = flow.steps[i]
       if (!step) continue
-      let observation = await this._opts.driver.observe()
+      let observation = await this._opts.driver.observe({ grid: true })
       // Diff-invalidated entries skip hash verification entirely and go
       // straight to the heal path — the diff already told us they're stale.
       let resolve: ResolveResult

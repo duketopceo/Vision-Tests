@@ -63,7 +63,14 @@ runs:
     - name: Install Playwright browser
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: npx playwright install "${{ inputs.browser }}"
+      env:
+        ARGUS_BROWSER: ${{ inputs.browser }}
+      run: |
+        case "$ARGUS_BROWSER" in
+          chromium|firefox|webkit) ;;
+          *) echo "invalid browser input: '$ARGUS_BROWSER' (expected chromium, firefox, or webkit)"; exit 1 ;;
+        esac
+        npx playwright install --with-deps "$ARGUS_BROWSER" || npx playwright install "$ARGUS_BROWSER"
 
     - name: Stage config
       shell: bash

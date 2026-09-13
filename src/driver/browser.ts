@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir } from 'node:fs/promises'
+import { mkdtemp, mkdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -55,18 +55,23 @@ export class BrowserDriver {
 
   static async launch(options: BrowserDriverOptions = {}): Promise<BrowserDriver> {
     const viewport = options.viewport ?? DEFAULT_VIEWPORT
-    const videoDir = options.videoDir ?? (await mkdtemp(join(tmpdir(), 'argus-video-')))
-    await mkdir(videoDir, { recursive: true })
-
     const browserName = options.browser ?? 'chromium'
     const browserType = { chromium, firefox, webkit }[browserName]
     if (browserType === undefined) {
       throw new Error(`unknown browser: ${browserName}`)
     }
+
+    const ownsVideoDir = options.videoDir === undefined
+    const videoDir = options.videoDir ?? (await mkdtemp(join(tmpdir(), 'argus-video-')))
+    await mkdir(videoDir, { recursive: true })
+    const cleanupVideoDir = () =>
+      ownsVideoDir ? rm(videoDir, { recursive: true, force: true }).catch(() => undefined) : Promise.resolve()
+
     let browser: Browser
     try {
       browser = await browserType.launch({ headless: true })
     } catch (e) {
+      await cleanupVideoDir()
       const msg = (e as Error).message
       if (/executable doesn't exist|browser has not been installed/i.test(msg)) {
         throw new Error(`${msg}\nHint: install it with \`npx playwright install ${browserName}\``, {
@@ -94,6 +99,7 @@ export class BrowserDriver {
       )
     } catch (e) {
       await browser.close().catch(() => undefined)
+      await cleanupVideoDir()
       throw e
     }
   }
@@ -120,7 +126,17 @@ export class BrowserDriver {
    */
   async observe(options: { grid?: boolean } = {}): Promise<Observation> {
     const grid = options.grid === true
-    if (grid) await this._paintGrid()
+    let painted = false
+    if (grid) {
+      try {
+        await this._removeGrid() // stale overlay from a failed prior paint
+        await this._paintGrid()
+        painted = true
+      } catch {
+        // Navigation race (execution context destroyed) or no document body —
+        // degrade to an ungridded observation rather than aborting the step.
+      }
+    }
     try {
       const screenshotJpeg = await this.page.screenshot({
         type: 'jpeg',
@@ -130,7 +146,7 @@ export class BrowserDriver {
       const a11yYaml = await this.page.locator('body').ariaSnapshot()
       return { screenshotJpeg, a11yYaml, width: this.viewport.width, height: this.viewport.height }
     } finally {
-      if (grid) await this._removeGrid()
+      if (painted) await this._removeGrid()
     }
   }
 
@@ -238,9 +254,13 @@ export class BrowserDriver {
   private _withTimeout<T>(promise: Promise<T>): Promise<T> {
     return Promise.race([
       promise,
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('browser cleanup timed out')), this.browserTimeoutMs),
-      ),
+      new Promise<never>((_, reject) => {
+        const t = setTimeout(
+          () => reject(new Error('browser cleanup timed out')),
+          this.browserTimeoutMs,
+        )
+        t.unref?.()
+      }),
     ])
   }
 }

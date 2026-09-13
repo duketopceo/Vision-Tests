@@ -17,11 +17,15 @@ const missing = (name: string) =>
   )
 
 describe('BrowserDriver browser selection', () => {
-  it('launches the configured browser type', async () => {
+  it('launches only the configured browser type', async () => {
     for (const name of ['chromium', 'firefox', 'webkit'] as const) {
+      vi.clearAllMocks()
       launches[name].mockRejectedValueOnce(new Error('stop after launch'))
       await expect(BrowserDriver.launch({ browser: name })).rejects.toThrow('stop after launch')
-      expect(launches[name]).toHaveBeenCalled()
+      expect(launches[name]).toHaveBeenCalledTimes(1)
+      for (const other of ['chromium', 'firefox', 'webkit'] as const) {
+        if (other !== name) expect(launches[other]).not.toHaveBeenCalled()
+      }
     }
   })
 
