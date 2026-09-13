@@ -89,10 +89,17 @@ export interface Config {
     indexPath: string | undefined;
     /** Base ref for diff invalidation (e.g. 'origin/main'); unset = working tree. */
     diffBase: string | undefined;
+    /**
+     * Max actions `argus-reviewer record` will take before giving up on `done`.
+     * Real multi-action flows need headroom — defaults to 40; `record
+     * --max-steps <n>` overrides.
+     */
+    recordStepCap: number | undefined;
 }
 export type ConfigInput = Partial<Omit<Config, 'provider'>> & {
     provider?: Partial<ProviderRules>;
 };
+export declare const DEFAULT_RECORD_STEP_CAP = 40;
 export declare function defineConfig(input: ConfigInput): ConfigInput;
 export declare function resolveConfig(input?: ConfigInput): Config;
 export declare function loadConfig(cwd: string): Promise<Config>;

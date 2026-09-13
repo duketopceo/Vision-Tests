@@ -18,6 +18,7 @@ const FIXTURE_URL = fileURLToPath(new URL('../fixtures/index.html', import.meta.
 interface FakeCall {
   kind: CallKind
   model: string
+  userText: string
 }
 
 class FakeClient implements VisionClient {
@@ -44,7 +45,13 @@ class FakeClient implements VisionClient {
     if (!next) {
       throw new Error('fake client queue empty')
     }
-    this.calls.push({ kind: opts.kind ?? 'ground', model: opts.model })
+    const userText = opts.messages
+      .filter((m) => m.role === 'user')
+      .flatMap((m) => m.content)
+      .filter((c) => c.type === 'text')
+      .map((c) => c.text)
+      .join('\n')
+    this.calls.push({ kind: opts.kind ?? 'ground', model: opts.model, userText })
     const model = next.model ?? 'qwen/qwen3.7-flash'
     const cost: CallCost = {
       model,
@@ -284,5 +291,55 @@ describe('Engine record/replay', () => {
     expect(second.verdict).toBe('pass')
     expect(second.cached).toBe(true)
     expect(client.calls.length).toBe(1)
+  })
+
+  it('record sends the action transcript so the model can emit done', async () => {
+    const actions = new Actions(driver)
+    const client = new FakeClient([
+      { content: JSON.stringify({ action: 'click', x: 200, y: 130, reasoning: 'click' }) },
+      { content: JSON.stringify({ action: 'click', x: 200, y: 130, reasoning: 'click again' }) },
+      { content: JSON.stringify({ action: 'done', reasoning: 'finished' }) },
+    ])
+    const config = resolveConfig({ budgetUsd: 1 })
+    const engine = new Engine({ driver, actions, client, ledger: new Ledger(config.budgetUsd), config })
+
+    const record = await engine.record('Click the button twice', actions, {})
+    expect(record.ok).toBe(true)
+    expect(client.calls[0].userText).not.toContain('Steps already taken')
+    expect(client.calls[1].userText).toContain('Steps already taken')
+    expect(client.calls[1].userText).toMatch(/#1 click .*\(200,130\)/)
+    expect(client.calls[2].userText).toMatch(/#2 click .*\(200,130\)/)
+  })
+
+  it('record fails with a cap hint when the model never returns done', async () => {
+    const actions = new Actions(driver)
+    const client = new FakeClient([
+      { content: JSON.stringify({ action: 'click', x: 200, y: 130, reasoning: 'a' }) },
+      { content: JSON.stringify({ action: 'click', x: 200, y: 130, reasoning: 'b' }) },
+      { content: JSON.stringify({ action: 'click', x: 200, y: 130, reasoning: 'c' }) },
+    ])
+    const config = resolveConfig({ budgetUsd: 1 })
+    const engine = new Engine({ driver, actions, client, ledger: new Ledger(config.budgetUsd), config })
+
+    const record = await engine.record('Never done', actions, { stepCap: 3 })
+    expect(record.ok).toBe(false)
+    expect(record.reason).toContain('after 3 steps')
+    expect(record.reason).toContain('--max-steps')
+    expect(record.reason).toContain('recordStepCap')
+  })
+
+  it('config.recordStepCap bounds record when no --max-steps override is given', async () => {
+    const actions = new Actions(driver)
+    const client = new FakeClient([
+      { content: JSON.stringify({ action: 'click', x: 200, y: 130, reasoning: 'a' }) },
+      { content: JSON.stringify({ action: 'click', x: 200, y: 130, reasoning: 'b' }) },
+    ])
+    const config = resolveConfig({ budgetUsd: 1, recordStepCap: 2 })
+    const engine = new Engine({ driver, actions, client, ledger: new Ledger(config.budgetUsd), config })
+
+    const record = await engine.record('Never done', actions, {})
+    expect(record.ok).toBe(false)
+    expect(record.reason).toContain('after 2 steps')
+    expect(client.calls).toHaveLength(2)
   })
 })

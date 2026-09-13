@@ -1,3 +1,4 @@
+import { DEFAULT_RECORD_STEP_CAP } from '../config.js';
 import { computeRegionHash, Fingerprint, fnv1a, } from '../cache/fingerprint.js';
 import { saveFlow } from '../cache/store.js';
 import { actionSchema, assertionSchema, buildActionMessages, buildAssertMessages, } from './prompts.js';
@@ -34,10 +35,10 @@ export class Engine {
         this._visionCalls = 0;
         this._steps = [];
         this._fingerprints = [];
-        const cap = options.stepCap ?? 10;
+        const cap = options.stepCap ?? this._opts.config.recordStepCap ?? DEFAULT_RECORD_STEP_CAP;
         let observation = await this._opts.driver.observe({ grid: true });
         for (let i = 0; i < cap; i++) {
-            const response = await this._callModel('ground', buildActionMessages(instruction, observation));
+            const response = await this._callModel('ground', buildActionMessages(instruction, observation, this._fingerprints.map((f) => ({ action: f.action, label: f.a11ySnippet }))));
             if (!response) {
                 return this._result(false, 'budget exceeded or model call blocked');
             }
@@ -69,12 +70,12 @@ export class Engine {
             this._steps.push({ instruction, action: action.action, ok: true, model: response.model });
             observation = nextObservation;
         }
-        if (options.flowName && this._opts.config.cacheDir) {
-            await saveFlow(this._opts.config.cacheDir, options.flowName, this._fingerprints);
-        }
         const finished = this._steps[this._steps.length - 1]?.action === 'done';
         if (!finished) {
-            return this._result(false, `step cap of ${cap} reached without done`);
+            return this._result(false, `record did not finish after ${cap} steps — raise the cap with --max-steps or config.recordStepCap`);
+        }
+        if (options.flowName && this._opts.config.cacheDir) {
+            await saveFlow(this._opts.config.cacheDir, options.flowName, this._fingerprints);
         }
         return this._result(true);
     }
@@ -85,7 +86,7 @@ export class Engine {
             const step = flow.steps[i];
             if (!step)
                 continue;
-            let observation = await this._opts.driver.observe();
+            let observation = await this._opts.driver.observe({ grid: true });
             // Diff-invalidated entries skip hash verification entirely and go
             // straight to the heal path — the diff already told us they're stale.
             let resolve;

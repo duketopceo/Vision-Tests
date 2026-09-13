@@ -89,6 +89,26 @@ jobs:
 
 Add `OPENROUTER_API_KEY` to the repository secrets.
 
+### Browsers
+
+Chromium is the default. To run under Firefox or WebKit, set `browser` in the
+config and install the matching Playwright browser:
+
+```ts
+// argus-reviewer.config.ts
+export default defineConfig({
+  browser: 'firefox',
+})
+```
+
+```bash
+npx playwright install firefox   # or webkit
+```
+
+When using the GitHub Action, pass the `browser` input (it installs the named
+browser) and set the same value in your config. The coordinate grid and video
+recording are browser-agnostic.
+
 ## 6. Register a self-hosted runner
 
 On an Ubuntu machine with SSH access:

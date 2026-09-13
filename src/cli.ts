@@ -14,7 +14,7 @@ import {
   test as registerTest,
   TdSession,
 } from './api.js'
-import { Config, loadConfig, unknownProviderSlugs } from './config.js'
+import { Config, DEFAULT_RECORD_STEP_CAP, loadConfig, unknownProviderSlugs } from './config.js'
 import { debug } from './debug.js'
 import { BrowserDriver } from './driver/browser.js'
 import { TargetProcess, waitForReady } from './driver/target.js'
@@ -57,7 +57,7 @@ interface Ctx {
 const USAGE = `argus-reviewer — vision-model E2E testing harness (BYOK via OPENROUTER_API_KEY)
 
 Usage:
-  argus-reviewer record "<flow description>" --url <target> [--name <flow>] [--tests-dir <dir>]
+  argus-reviewer record "<flow description>" --url <target> [--name <flow>] [--tests-dir <dir>] [--max-steps <n>]
   argus-reviewer run [pattern] [--url <target>] [--dir <testsDir>] [--report-dir <dir>]
   argus-reviewer code-review [--report-dir <dir>]
   argus-reviewer cache list [--dir <cacheDir>]
@@ -77,6 +77,7 @@ Options:
   --url <url>        Target URL (falls back to config.target.url)
   --name <name>      Flow name for the cache + generated test file
   --tests-dir <dir>  Where to write the generated test file (default: config testsDir or ./tests)
+  --max-steps <n>    Step cap before giving up on 'done' (default: config recordStepCap or ${DEFAULT_RECORD_STEP_CAP})
   -h, --help         Show this help`
 
 const RUN_USAGE = `Usage: argus-reviewer run [pattern] [options]
@@ -239,6 +240,7 @@ async function cmdRecord(args: string[], ctx: Ctx, deps: CliDeps): Promise<numbe
       url: { type: 'string' },
       name: { type: 'string' },
       'tests-dir': { type: 'string' },
+      'max-steps': { type: 'string' },
     },
   })
   if (values.help) {
@@ -261,6 +263,12 @@ async function cmdRecord(args: string[], ctx: Ctx, deps: CliDeps): Promise<numbe
     return 2
   }
   const flowName = values.name ?? slugify(description)
+  const maxSteps =
+    values['max-steps'] !== undefined ? Number(values['max-steps']) : undefined
+  if (maxSteps !== undefined && (!Number.isInteger(maxSteps) || maxSteps < 1)) {
+    ctx.err(`--max-steps must be a positive integer, got "${values['max-steps']}"`)
+    return 2
+  }
 
   let target: TargetProcess | undefined
   let driver: BrowserDriver | undefined
@@ -276,7 +284,11 @@ async function cmdRecord(args: string[], ctx: Ctx, deps: CliDeps): Promise<numbe
 
     ledger.startSandbox()
     await driver.goto(target?.url ?? url)
-    const result = await engine.record(description, actions, { flowName })
+    const result = await engine.record(
+      description,
+      actions,
+      { flowName, ...(maxSteps !== undefined ? { stepCap: maxSteps } : {}) },
+    )
     ledger.stopSandbox()
 
     const state = ledger.state
@@ -287,14 +299,16 @@ async function cmdRecord(args: string[], ctx: Ctx, deps: CliDeps): Promise<numbe
     if (result.reason !== undefined) ctx.err(`reason: ${result.reason}`)
     if (state.budgetExceeded) ctx.err('budget cap was hit during record')
 
-    const testsDir = resolve(ctx.cwd, values['tests-dir'] ?? config.testsDir ?? 'tests')
-    await mkdir(testsDir, { recursive: true })
-    const cacheDir = config.cacheDir ?? join(ctx.cwd, '.argus-reviewer-cache')
-    const flow = await loadFlow(cacheDir, flowName)
-    const testFile = join(testsDir, `${flowName}.test.ts`)
-    await writeFile(testFile, renderTestFile(flowName, flow?.steps ?? []), 'utf8')
-    ctx.out(`wrote test file: ${testFile}`)
-    if (config.cacheDir !== undefined) ctx.out(`wrote cache: ${flowPath(cacheDir, flowName)}`)
+    if (result.ok) {
+      const testsDir = resolve(ctx.cwd, values['tests-dir'] ?? config.testsDir ?? 'tests')
+      await mkdir(testsDir, { recursive: true })
+      const cacheDir = config.cacheDir ?? join(ctx.cwd, '.argus-reviewer-cache')
+      const flow = await loadFlow(cacheDir, flowName)
+      const testFile = join(testsDir, `${flowName}.test.ts`)
+      await writeFile(testFile, renderTestFile(flowName, flow?.steps ?? []), 'utf8')
+      ctx.out(`wrote test file: ${testFile}`)
+      if (config.cacheDir !== undefined) ctx.out(`wrote cache: ${flowPath(cacheDir, flowName)}`)
+    }
 
     return result.ok ? 0 : 1
   } catch (e) {

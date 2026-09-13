@@ -12,17 +12,17 @@ export class Actions {
     /** Single click at viewport pixel (x, y). */
     async click(x, y) {
         await this.driver.rawPage.mouse.click(x, y);
-        return this.driver.observe();
+        return this.driver.observe({ grid: true });
     }
     /** Double click at viewport pixel (x, y). */
     async doubleClick(x, y) {
         await this.driver.rawPage.mouse.dblclick(x, y);
-        return this.driver.observe();
+        return this.driver.observe({ grid: true });
     }
     /** Type text into the currently focused element. */
     async type(text) {
         await this.driver.rawPage.keyboard.type(text);
-        return this.driver.observe();
+        return this.driver.observe({ grid: true });
     }
     /**
      * Press keys in sequence. Each entry is a key name ('Enter', 'Tab') or a
@@ -32,16 +32,16 @@ export class Actions {
         for (const key of keys) {
             await this.driver.rawPage.keyboard.press(key);
         }
-        return this.driver.observe();
+        return this.driver.observe({ grid: true });
     }
     /** Scroll the page by (dx, dy) viewport pixels. */
     async scroll(dx, dy) {
         await this.driver.rawPage.mouse.wheel(dx, dy);
-        return this.driver.observe();
+        return this.driver.observe({ grid: true });
     }
     /** Wait ms milliseconds, then observe. */
     async wait(ms) {
         await this.driver.rawPage.waitForTimeout(ms);
-        return this.driver.observe();
+        return this.driver.observe({ grid: true });
     }
 }

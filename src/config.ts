@@ -90,9 +90,17 @@ export interface Config {
   indexPath: string | undefined
   /** Base ref for diff invalidation (e.g. 'origin/main'); unset = working tree. */
   diffBase: string | undefined
+  /**
+   * Max actions `argus-reviewer record` will take before giving up on `done`.
+   * Real multi-action flows need headroom — defaults to 40; `record
+   * --max-steps <n>` overrides.
+   */
+  recordStepCap: number | undefined
 }
 
 export type ConfigInput = Partial<Omit<Config, 'provider'>> & { provider?: Partial<ProviderRules> }
+
+export const DEFAULT_RECORD_STEP_CAP = 40
 
 const defaults: Config = {
   model: 'google/gemini-2.5-flash-lite',
@@ -118,6 +126,7 @@ const defaults: Config = {
   sourceGlobs: undefined,
   indexPath: undefined,
   diffBase: undefined,
+  recordStepCap: DEFAULT_RECORD_STEP_CAP,
 }
 
 export function defineConfig(input: ConfigInput): ConfigInput {
@@ -126,11 +135,13 @@ export function defineConfig(input: ConfigInput): ConfigInput {
 
 export function resolveConfig(input: ConfigInput = {}): Config {
   const provider: ProviderRules = { ...defaults.provider, ...(input.provider ?? {}) }
-  return {
-    ...defaults,
-    ...input,
-    provider,
-  }
+  const resolved: Config = { ...defaults, ...input, provider }
+  const cap = resolved.recordStepCap
+  resolved.recordStepCap =
+    cap !== undefined && Number.isFinite(cap) && cap >= 1
+      ? Math.floor(cap)
+      : DEFAULT_RECORD_STEP_CAP
+  return resolved
 }
 
 export async function loadConfig(cwd: string): Promise<Config> {

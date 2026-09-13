@@ -12,19 +12,19 @@ export class Actions {
   /** Single click at viewport pixel (x, y). */
   async click(x: number, y: number): Promise<Observation> {
     await this.driver.rawPage.mouse.click(x, y)
-    return this.driver.observe()
+    return this.driver.observe({ grid: true })
   }
 
   /** Double click at viewport pixel (x, y). */
   async doubleClick(x: number, y: number): Promise<Observation> {
     await this.driver.rawPage.mouse.dblclick(x, y)
-    return this.driver.observe()
+    return this.driver.observe({ grid: true })
   }
 
   /** Type text into the currently focused element. */
   async type(text: string): Promise<Observation> {
     await this.driver.rawPage.keyboard.type(text)
-    return this.driver.observe()
+    return this.driver.observe({ grid: true })
   }
 
   /**
@@ -35,18 +35,18 @@ export class Actions {
     for (const key of keys) {
       await this.driver.rawPage.keyboard.press(key)
     }
-    return this.driver.observe()
+    return this.driver.observe({ grid: true })
   }
 
   /** Scroll the page by (dx, dy) viewport pixels. */
   async scroll(dx: number, dy: number): Promise<Observation> {
     await this.driver.rawPage.mouse.wheel(dx, dy)
-    return this.driver.observe()
+    return this.driver.observe({ grid: true })
   }
 
   /** Wait ms milliseconds, then observe. */
   async wait(ms: number): Promise<Observation> {
     await this.driver.rawPage.waitForTimeout(ms)
-    return this.driver.observe()
+    return this.driver.observe({ grid: true })
   }
 }
