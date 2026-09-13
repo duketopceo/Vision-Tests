@@ -52,7 +52,7 @@ function renderRuns(s) {
       const btn = el('button', 'logs-btn', 'logs')
       btn.onclick = async () => {
         const res = await window.argus.runLogs(r.databaseId)
-        if (!res.ok) liveAppend({ level: 'warn', source: 'gh', msg: esc(res.msg) })
+        if (!res.ok) liveAppend({ level: 'warn', source: 'gh', msg: res.msg })
       }
       row.append(btn)
     }

@@ -1,6 +1,6 @@
 {
   "name": "argus-reviewer-e2e",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "argus-reviewer \u2014 open-source vision-model E2E testing harness. Record, replay, heal, and assert with any OpenRouter model under a hard budget cap.",
   "type": "module",
   "license": "MIT",

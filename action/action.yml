@@ -66,7 +66,12 @@ runs:
       working-directory: ${{ inputs.working-directory }}
       run: |
         if [ "${{ inputs.config }}" != "argus-reviewer.config.ts" ]; then
-          cp "${{ inputs.config }}" argus-reviewer.config.ts
+          ext="${{ inputs.config }}"
+          ext="${ext##*.}"
+          case "$ext" in
+            ts|json) cp "${{ inputs.config }}" "argus-reviewer.config.$ext" ;;
+            *) echo "unsupported config extension: $ext" >&2; exit 1 ;;
+          esac
         fi
 
     - name: Build repo index

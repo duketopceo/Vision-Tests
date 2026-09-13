@@ -254,7 +254,10 @@ async function main() {
     }
   }
 
-  const codeReviewOk = codeReview == null || codeReview.ok === true
+  // Missing code-review.json after a continue-on-error step means the review
+  // crashed, not that it skipped — an intentional skip writes ok+skipped.
+  // Fail closed rather than reporting it as a clean skip.
+  const codeReviewOk = codeReview != null && codeReview.ok === true
   const ok = (report?.ok === true) && codeReviewOk
   const conclusion = !hasKey ? 'neutral' : ok ? 'success' : 'failure'
   const body = !hasKey
@@ -279,18 +282,27 @@ async function postInlineComments(pr, codeReview) {
   if (comments.length === 0) return
 
   // Re-runs on the same SHA must not duplicate inline comments — the sticky
-  // body is upserted but review comments are not.
-  const { data: existing } = await github.rest.pulls.listReviewComments({
-    owner: context.repo.owner,
-    repo: context.repo.repo,
-    pull_number: pr.number,
-    per_page: 100,
-  })
-  const posted = new Set(
-    existing
-      .filter((c) => c.body && c.body.startsWith('**argus-reviewer'))
-      .map((c) => `${c.path}:${c.line}:${c.body}`),
-  )
+  // body is upserted but review comments are not. Paginate fully (100/page)
+  // and scope dedup to the current head: comments on older commits must not
+  // suppress findings that still apply to this head.
+  const posted = new Set()
+  let page = 1
+  for (;;) {
+    const { data: existing } = await github.rest.pulls.listReviewComments({
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      pull_number: pr.number,
+      per_page: 100,
+      page,
+    })
+    for (const c of existing) {
+      if (c.body && c.body.startsWith('**argus-reviewer') && c.commit_id === pr.head.sha) {
+        posted.add(`${c.path}:${c.line}:${c.body}`)
+      }
+    }
+    if (existing.length < 100) break
+    page += 1
+  }
   const fresh = comments.filter((c) => !posted.has(`${c.path}:${c.line}:${c.body}`))
   if (fresh.length === 0) return
 

@@ -9,9 +9,16 @@ import { dirname, join } from 'node:path'
 import { collect, ROOT } from '../scripts/collect.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const LIVE_LOG = join(ROOT, '.argus-reviewer-cache/live.ndjson')
+// The CLI honours config.cacheDir / --cache-dir; the dashboard must tail the
+// same directory or a custom cache dir produces no Live Log output.
+let LIVE_LOG = join(ROOT, '.argus-reviewer-cache/live.ndjson')
+try {
+  const { loadConfig } = await import('../dist/config.js')
+  const cfg = await loadConfig(ROOT)
+  if (cfg.cacheDir) LIVE_LOG = join(ROOT, cfg.cacheDir, 'live.ndjson')
+} catch { /* fall back to the default cache dir */ }
 app.disableHardwareAcceleration()
-app.setVersion('0.0.1')
+app.setVersion('0.1.0')
 let win
 let evalChild
 let logChild
@@ -35,10 +42,10 @@ async function tailLive() {
     if (size < liveOffset) liveOffset = 0 // truncated
     if (size === liveOffset) return
     const fh = await open(LIVE_LOG)
-    const { buffer } = await fh.read(Buffer.alloc(size - liveOffset), 0, size - liveOffset, liveOffset)
+    const { bytesRead, buffer } = await fh.read(Buffer.alloc(size - liveOffset), 0, size - liveOffset, liveOffset)
     await fh.close()
-    liveOffset = size
-    liveBuf += buffer.toString('utf8')
+    liveOffset += bytesRead
+    liveBuf += buffer.subarray(0, bytesRead).toString('utf8')
     const lines = liveBuf.split('\n')
     liveBuf = lines.pop() // keep partial line
     for (const l of lines) {

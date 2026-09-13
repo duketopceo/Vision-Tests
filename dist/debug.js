@@ -7,7 +7,8 @@ function toMsg(arg) {
     if (typeof arg === 'string')
         return arg;
     try {
-        return JSON.stringify(arg);
+        const s = JSON.stringify(arg);
+        return s === undefined ? String(arg) : s; // JSON.stringify(undefined) -> undefined
     }
     catch {
         return String(arg); // BigInt, cyclic refs — never throw from a debug call

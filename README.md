@@ -45,7 +45,7 @@ argus-reviewer/
 ├── src/
 │   ├── api.ts               # Test-facing `test`/`td` API + generated test file renderer
 │   ├── cli.ts               # `record`, `run`, and `cache` commands
-│   ├── config.ts            # `argus-reviewer.config.*` loader (legacy `vision-e2e.*` accepted)
+│   ├── config.ts            # `argus-reviewer.config.*` loader (legacy `vision-e2e.config.*` accepted)
 │   ├── driver/
 │   │   ├── browser.ts       # Playwright Chromium launch + observation capture
 │   │   └── target.ts        # Optional local dev-server target process

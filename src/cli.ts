@@ -432,6 +432,11 @@ async function cmdRun(args: string[], ctx: Ctx, deps: CliDeps): Promise<number> 
   }
 
   const liveDir = resolve(ctx.cwd, config.cacheDir ?? '.argus-reviewer-cache')
+  // liveLog's mkdir is non-recursive by design — create a custom nested
+  // cache dir (and ancestors) here once so the first live write lands.
+  try {
+    await mkdir(liveDir, { recursive: true })
+  } catch { /* liveLog stays best-effort */ }
   const logger = createLogger(resolveLogLevel(ctx.env, config.logLevel), ctx, (l, m) =>
     liveLog(liveDir, 'run', l, m),
   )
